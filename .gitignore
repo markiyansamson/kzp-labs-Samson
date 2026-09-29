@@ -1,0 +1,15 @@
+# Результати Maven-збірки
+target/
+
+# Налаштування IDE
+.idea/
+*.iml
+.vscode/
+
+# Скомпільовані Java-файли
+*.class
+
+# Службові файли ОС
+.DS_Store
+Thumbs.db
+out/

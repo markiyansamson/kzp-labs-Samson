@@ -1,0 +1,7 @@
+# Однакові завершення рядків на Windows, macOS та Linux
+* text=auto eol=lf
+
+# Бінарні файли
+*.jar binary
+*.png binary
+*.jpg binary
