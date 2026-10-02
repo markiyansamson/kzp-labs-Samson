@@ -140,3 +140,70 @@ out/report.txt
 ## Автор
 
 Маркіян Самсон
+## Автоматизоване тестування
+
+У проєкті використовується JUnit 5.
+
+Для запуску тестів:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Результат:
+
+```text
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+
+Тести перевіряють:
+
+- обробку коректних і некоректних записів;
+- ситуацію, коли немає жодного коректного запису;
+- неправильне значення поля `urgent`.
+
+## Статичний аналіз
+
+Для статичного аналізу використовується SpotBugs.
+
+Запуск:
+
+```powershell
+.\mvnw.cmd verify
+```
+
+Результат:
+
+```text
+BugInstance size is 0
+Error size is 0
+No errors/warnings found
+BUILD SUCCESS
+```
+
+## Створення виконуваного JAR
+
+Для створення JAR:
+
+```powershell
+.\mvnw.cmd package
+```
+
+Після успішної збірки створюється:
+
+```text
+target/lab01-1.0.0.jar
+```
+
+Запуск на Java 21:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.0.0.jar
+```
+
+Довідка:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.0.0.jar --help
+```

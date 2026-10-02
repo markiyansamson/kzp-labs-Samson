@@ -161,9 +161,11 @@ public final class Main {
 
             System.out.print(report);
 
-            if (outputPath.getParent() != null) {
-                Files.createDirectories(outputPath.getParent());
-            }
+            Path outputDirectory = outputPath.getParent();
+
+if (outputDirectory != null) {
+    Files.createDirectories(outputDirectory);
+}
 
             Files.writeString(
                     outputPath,
