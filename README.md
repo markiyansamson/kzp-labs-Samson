@@ -207,3 +207,61 @@ target/lab01-1.0.0.jar
 ```powershell
 & "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.0.0.jar --help
 ```
+## Рівень 3 — GitHub Actions
+
+Для автоматичної перевірки проєкту використовується GitHub Actions.
+
+CI запускається на трьох операційних системах:
+
+- Ubuntu;
+- Windows;
+- macOS.
+
+На кожній операційній системі використовується Java 21 та виконується Maven-перевірка `verify`.
+
+Під час CI перевіряються:
+
+- компіляція проєкту;
+- JUnit 5 тести;
+- статичний аналіз SpotBugs;
+- створення виконуваного JAR.
+
+Результати CI:
+
+- Ubuntu — SUCCESS
+- Windows — SUCCESS
+- macOS — SUCCESS
+
+Сторінка GitHub Actions:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions
+
+Успішний запуск CI:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/37108140099
+
+JAR-артефакт:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/37108140099/artifacts/11268970570
+
+## Версія програми
+
+Поточна версія:
+
+```text
+1.0.0
+```
+
+Перевірка версії:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.0.0.jar --version
+```
+
+Результат:
+
+```text
+1.0.0
+```
+
+Git-тег версії: v1.0.0
