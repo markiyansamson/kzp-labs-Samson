@@ -295,6 +295,20 @@ BUILD SUCCESS
 
 ---
 
+### Перевірка на різних операційних системах
+
+GitHub Actions успішно виконав CI на трьох платформах:
+
+| Операційна система | Результат |
+|---|---|
+| Ubuntu | SUCCESS |
+| Windows | SUCCESS |
+| macOS | SUCCESS |
+
+На кожній платформі виконувалися автоматизовані тести, SpotBugs та Maven-збірка.
+
+У workflow також сформовано виконуваний JAR та опубліковано його як артефакт.
+
 ## 9. Документація
 
 Javadoc додано до:
@@ -501,3 +515,22 @@ double averagePrice =
 
 ```powershell
 .\mvnw.cmd test
+
+### GitHub Actions
+
+Сторінка GitHub Actions:
+https://github.com/markiyansamson/kzp-labs-Samson/actions
+
+Успішний запуск CI:
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/37108140099
+
+JAR-артефакт:
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/37108140099/artifacts/11268970570
+
+Результати CI:
+
+- Ubuntu — SUCCESS
+- Windows — SUCCESS
+- macOS — SUCCESS
+
+Git-тег версії: v1.0.0
