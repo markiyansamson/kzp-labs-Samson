@@ -209,7 +209,7 @@ if (outputDirectory != null) {
 
         StringBuilder report = new StringBuilder();
 
-        report.append("Звіт: Ветклініка\n");
+        report.append("Звіт: Ветклініка%n".formatted());
 
         report.append(String.format(
                 Locale.ROOT,
@@ -237,10 +237,10 @@ if (outputDirectory != null) {
                 errors.size()));
 
         if (!errors.isEmpty()) {
-            report.append("\nПомилки:\n");
+            report.append("%nПомилки:%n".formatted());
 
             for (String error : errors) {
-                report.append(error).append('\n');
+                report.append(error).append("%n".formatted());
             }
         }
 
