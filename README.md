@@ -255,7 +255,7 @@ https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/37108140099/artif
 Перевірка версії:
 
 ```powershell
-& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.0.0.jar --version
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-1.1.0.jar
 ```
 
 Результат:
