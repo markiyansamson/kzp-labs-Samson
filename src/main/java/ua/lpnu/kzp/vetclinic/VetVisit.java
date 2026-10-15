@@ -30,13 +30,13 @@ public final class VetVisit {
             double price,
             boolean urgent) {
 
-        this.animal = requireText(animal, "Тварина");
-        this.species = requireText(species, "Вид");
-        this.visitType = requireText(visitType, "Тип візиту");
+        this.animal = requireText(animal, "animal");
+        this.species = requireText(species, "species");
+        this.visitType = requireText(visitType, "visitType");
 
         if (price < 0 || !Double.isFinite(price)) {
             throw new IllegalArgumentException(
-                    "Ціна має бути скінченним невід'ємним числом");
+                    "price має бути скінченним невід'ємним числом");
         }
 
         this.price = price;
@@ -97,22 +97,26 @@ public final class VetVisit {
      *                                  або значення некоректні
      */
     public static VetVisit fromCsv(String line) {
-        Objects.requireNonNull(line, "Рядок не може бути null");
+        Objects.requireNonNull(
+                line,
+                "Рядок не може бути null");
 
         String[] fields = line.split(";", -1);
 
         if (fields.length != 5) {
             throw new IllegalArgumentException(
-                    "Очікується 5 полів");
+                    "очікується 5 полів, отримано "
+                            + fields.length);
         }
 
         double price;
 
         try {
-            price = Double.parseDouble(fields[3].trim());
+            price = Double.parseDouble(
+                    fields[3].trim());
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(
-                    "Поле price має бути числом",
+                    "поле price має бути числом",
                     exception);
         }
 
@@ -121,10 +125,11 @@ public final class VetVisit {
         if (!urgentText.equalsIgnoreCase("true")
                 && !urgentText.equalsIgnoreCase("false")) {
             throw new IllegalArgumentException(
-                    "Поле urgent має бути true або false");
+                    "поле urgent має бути true або false");
         }
 
-        boolean urgent = Boolean.parseBoolean(urgentText);
+        boolean urgent =
+                Boolean.parseBoolean(urgentText);
 
         return new VetVisit(
                 fields[0],
@@ -164,13 +169,14 @@ public final class VetVisit {
 
         Objects.requireNonNull(
                 value,
-                fieldName + " не може бути null");
+                "поле " + fieldName + " не може бути null");
 
         String trimmed = value.trim();
 
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException(
-                    fieldName + " не може бути порожнім");
+                    "поле " + fieldName
+                            + " не може бути порожнім");
         }
 
         return trimmed;
