@@ -579,3 +579,38 @@ record для представлення незмінного допоміжно
 
 ```java
 List<VetVisit>
+
+## 11. Фінальний стан та GitHub Actions
+
+Фінальна версія лабораторної роботи №2 — `1.1.0`.
+
+Git-тег:
+
+https://github.com/markiyansamson/kzp-labs-Samson/releases/tag/v1.1.0
+
+Фінальний успішний запуск GitHub Actions:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/38746610617
+
+JAR-артефакт:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/38746610617/artifacts/11979301066
+
+Pull Request лабораторної роботи:
+
+https://github.com/markiyansamson/kzp-labs-Samson/pull/12
+
+Результати CI:
+
+- Ubuntu — SUCCESS
+- Windows — SUCCESS
+- macOS — SUCCESS
+
+Усі старі та нові автоматизовані тести проходять успішно:
+
+```text
+Tests run: 15
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
