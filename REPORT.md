@@ -987,22 +987,20 @@ v1.0.0
 
 https://github.com/markiyansamson/kzp-labs-Samson/pull/12
 
-Після перевірки роботи викладачем було додатково виправлено:
+Pull Request з виправленнями за зауваженнями викладача:
 
-- інтеграцію `VetVisit.fromCsv()` у фактичну обробку `Main`;
+https://github.com/markiyansamson/kzp-labs-Samson/pull/15
+
+У Pull Request #15 виправлено:
+
+- фактичну інтеграцію `VetVisit.fromCsv()` у `Main`;
 - використання `List<VetVisit>`;
 - використання `PriceUrgency`;
 - додано тест предметного шляху;
-- основну версію LAB 02 приведено до `2.0.0`.
+- версію LAB 02 змінено з проміжної `1.1.0` на правильну основну версію `2.0.0`;
+- оновлено CI, README та REPORT.
 
-Виправлення виконуються у гілці:
-
-```text
-fix-lab02-feedback
-```
-
-Після проходження всіх перевірок зміни об'єднуються з
-захищеною гілкою `main` через Pull Request.
+Pull Request #15 успішно проходить перевірки на Ubuntu, Windows і macOS.
 
 ## 10. GitHub Actions та кросплатформна перевірка
 
@@ -1031,23 +1029,42 @@ macos-latest
 7. створюється `lab01-2.0.0.jar`;
 8. JAR публікується як artifact.
 
+
+```markdown
 Сторінка GitHub Actions:
 
 https://github.com/markiyansamson/kzp-labs-Samson/actions
 
-Фінальний Git-тег LAB 02:
+Pull Request з виправленнями:
+
+https://github.com/markiyansamson/kzp-labs-Samson/pull/15
+
+Успішний CI-запуск для Pull Request #15:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140017222
+
+Успішний CI-запуск, у якому сформовано JAR-артефакт:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140251510
+
+JAR-артефакт версії `2.0.0`:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140251510/artifacts/12140974098
+
+Результати кросплатформної перевірки:
+
+- Ubuntu — SUCCESS;
+- Windows — SUCCESS;
+- macOS — SUCCESS.
+
+У CI виконуються 16 автоматизованих тестів:
 
 ```text
-v2.0.0
-```
-
-Release:
-
-https://github.com/markiyansamson/kzp-labs-Samson/releases/tag/v2.0.0
-
-> Фінальне пряме посилання на зелений CI-запуск і
-> JAR-артефакт додається після завершення Pull Request
-> з виправленнями та створення фінального CI для версії `2.0.0`.
+Tests run: 16
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
 
 ## 11. Порівняння поведінки LAB 01 і LAB 02
 
