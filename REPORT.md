@@ -1033,23 +1033,17 @@ macos-latest
 ```markdown
 Сторінка GitHub Actions:
 
-https://github.com/markiyansamson/kzp-labs-Samson/actions
-
-Pull Request з виправленнями:
-
+PR з виправленнями:
 https://github.com/markiyansamson/kzp-labs-Samson/pull/15
 
-Успішний CI-запуск для Pull Request #15:
+Фінальний CI для v2.0.0:
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39142088984
 
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140017222
+Фінальний JAR artifact:
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39142088984/artifacts/12142311128
 
-Успішний CI-запуск, у якому сформовано JAR-артефакт:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140251510
-
-JAR-артефакт версії `2.0.0`:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/39140251510/artifacts/12140974098
+Release / тег v2.0.0:
+https://github.com/markiyansamson/kzp-labs-Samson/releases/tag/v2.0.0
 
 Результати кросплатформної перевірки:
 
