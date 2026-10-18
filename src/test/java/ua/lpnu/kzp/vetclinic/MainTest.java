@@ -1,11 +1,13 @@
 package ua.lpnu.kzp.vetclinic;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -93,5 +95,26 @@ class MainTest {
         assertTrue(report.contains(
                 "поле urgent має бути true або false"));
         assertTrue(report.contains("Помилок: 1"));
+    }
+
+    /**
+     * Перевіряє предметний шлях:
+     * CSV -> VetVisit.fromCsv() -> List<VetVisit>
+     * -> Main.calculateSummary() -> PriceUrgency.
+     */
+    @Test
+    void processesVisitsThroughDomainModel() {
+        List<VetVisit> visits = List.of(
+                VetVisit.fromCsv(
+                        "Мурка;кіт;огляд;350.00;false"),
+                VetVisit.fromCsv(
+                        "Бім;собака;вакцинація;500.00;false"),
+                VetVisit.fromCsv(
+                        "Рекс;собака;невідкладна допомога;1200.00;true"));
+
+        PriceUrgency summary = Main.calculateSummary(visits);
+
+        assertEquals(2050.00, summary.totalPrice(), 0.001);
+        assertEquals(1, summary.urgentCount());
     }
 }
