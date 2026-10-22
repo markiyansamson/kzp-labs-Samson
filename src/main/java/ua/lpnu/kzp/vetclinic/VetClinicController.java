@@ -70,9 +70,9 @@ public final class VetClinicController {
     }
 
     /**
-     * Обчислює підсумок коректних візитів.
+     * Обчислює підсумок коректних візитів через поліморфний метод finalCost().
      *
-     * @param visits список візитів
+     * @param visits список візитів спільного типу
      * @return загальна вартість і кількість термінових візитів
      */
     static PriceUrgency calculateSummary(List<VetVisit> visits) {
@@ -80,14 +80,16 @@ public final class VetClinicController {
         int urgentCount = 0;
 
         for (VetVisit visit : visits) {
-            totalPrice += visit.getPrice();
+            totalPrice += visit.finalCost();
 
             if (visit.isUrgent()) {
                 urgentCount++;
             }
         }
 
-        return new PriceUrgency(totalPrice, urgentCount);
+        return new PriceUrgency(
+                totalPrice,
+                urgentCount);
     }
 
     private static void writeReport(
@@ -115,7 +117,8 @@ public final class VetClinicController {
 
         StringBuilder report = new StringBuilder();
 
-        report.append("Звіт: Ветклініка%n".formatted());
+        report.append(
+                "Звіт: Ветклініка%n".formatted());
 
         report.append(String.format(
                 Locale.ROOT,
@@ -143,7 +146,8 @@ public final class VetClinicController {
                 errors.size()));
 
         if (!errors.isEmpty()) {
-            report.append("%nПомилки:%n".formatted());
+            report.append(
+                    "%nПомилки:%n".formatted());
 
             for (String error : errors) {
                 report.append(error)
