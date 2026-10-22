@@ -5,19 +5,31 @@ package ua.lpnu.kzp.vetclinic;
  */
 public enum VisitKind {
 
+    /**
+     * Звичайний плановий візит.
+     */
     ROUTINE("звичайний"),
+
+    /**
+     * Терміновий візит.
+     */
     URGENT("терміновий");
 
     private final String label;
 
+    /**
+     * Створює категорію з текстовим поданням.
+     *
+     * @param label текстове подання категорії
+     */
     VisitKind(String label) {
         this.label = label;
     }
 
     /**
-     * Повертає текстове представлення категорії.
+     * Повертає текстове подання категорії для звіту.
      *
-     * @return назва категорії
+     * @return текстове подання категорії
      */
     public String label() {
         return label;
