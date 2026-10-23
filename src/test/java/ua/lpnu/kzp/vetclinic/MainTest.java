@@ -112,7 +112,8 @@ class MainTest {
                 VetVisit.fromCsv(
                         "Рекс;собака;невідкладна допомога;1200.00;true"));
 
-        PriceUrgency summary = Main.calculateSummary(visits);
+        PriceUrgency summary =
+        VetClinicController.calculateSummary(visits);
 
         assertEquals(2050.00, summary.totalPrice(), 0.001);
         assertEquals(1, summary.urgentCount());

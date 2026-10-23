@@ -1,34 +1,38 @@
 package ua.lpnu.kzp.vetclinic;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Описує один візит до ветеринарної клініки.
+ * Спільний базовий тип візитів до ветеринарної клініки.
  */
-public final class VetVisit {
+public abstract class VetVisit {
 
     private final String animal;
     private final String species;
     private final String visitType;
     private final double price;
-    private final boolean urgent;
+    private final VisitKind kind;
 
     /**
-     * Створює коректний запис про візит до ветеринарної клініки.
+     * Створює коректний візит до ветеринарної клініки.
      *
      * @param animal кличка або назва тварини
      * @param species вид тварини
      * @param visitType тип візиту
-     * @param price вартість візиту
-     * @param urgent ознака термінового візиту
+     * @param price базова вартість візиту
+     * @param kind категорія візиту
      */
-    public VetVisit(
+    @SuppressFBWarnings(
+            value = "CT_CONSTRUCTOR_THROW",
+            justification = "Конструктор навмисно відхиляє некоректний предметний стан")
+    protected VetVisit(
             String animal,
             String species,
             String visitType,
             double price,
-            boolean urgent) {
+            VisitKind kind) {
 
         this.animal = requireText(animal, "animal");
         this.species = requireText(species, "species");
@@ -40,7 +44,9 @@ public final class VetVisit {
         }
 
         this.price = price;
-        this.urgent = urgent;
+        this.kind = Objects.requireNonNull(
+                kind,
+                "kind не може бути null");
     }
 
     /**
@@ -48,7 +54,7 @@ public final class VetVisit {
      *
      * @return назва або кличка тварини
      */
-    public String getAnimal() {
+    public final String getAnimal() {
         return animal;
     }
 
@@ -57,7 +63,7 @@ public final class VetVisit {
      *
      * @return вид тварини
      */
-    public String getSpecies() {
+    public final String getSpecies() {
         return species;
     }
 
@@ -66,17 +72,26 @@ public final class VetVisit {
      *
      * @return тип візиту
      */
-    public String getVisitType() {
+    public final String getVisitType() {
         return visitType;
     }
 
     /**
-     * Повертає вартість візиту.
+     * Повертає базову вартість візиту.
      *
-     * @return вартість візиту
+     * @return базова вартість
      */
-    public double getPrice() {
+    public final double getPrice() {
         return price;
+    }
+
+    /**
+     * Повертає категорію візиту.
+     *
+     * @return категорія візиту
+     */
+    public final VisitKind getKind() {
+        return kind;
     }
 
     /**
@@ -84,17 +99,23 @@ public final class VetVisit {
      *
      * @return true, якщо візит терміновий
      */
-    public boolean isUrgent() {
-        return urgent;
+    public final boolean isUrgent() {
+        return kind == VisitKind.URGENT;
     }
 
     /**
-     * Створює візит із одного CSV-рядка.
+     * Обчислює підсумкову вартість відповідно до конкретного підтипу.
+     *
+     * @return підсумкова вартість
+     */
+    public abstract double finalCost();
+
+    /**
+     * Створює конкретний підтип візиту з одного CSV-рядка.
      *
      * @param line рядок у форматі animal;species;visitType;price;urgent
-     * @return створений об'єкт VetVisit
-     * @throws IllegalArgumentException якщо структура рядка
-     *                                  або значення некоректні
+     * @return RoutineVisit або UrgentVisit через спільний тип VetVisit
+     * @throws IllegalArgumentException якщо структура або значення некоректні
      */
     public static VetVisit fromCsv(String line) {
         Objects.requireNonNull(
@@ -128,15 +149,60 @@ public final class VetVisit {
                     "поле urgent має бути true або false");
         }
 
-        boolean urgent =
-                Boolean.parseBoolean(urgentText);
+        boolean urgent = Boolean.parseBoolean(urgentText);
 
-        return new VetVisit(
+        if (urgent) {
+            return new UrgentVisit(
+                    fields[0],
+                    fields[1],
+                    fields[2],
+                    price);
+        }
+
+        return new RoutineVisit(
                 fields[0],
                 fields[1],
                 fields[2],
-                price,
-                urgent);
+                price);
+    }
+
+    /**
+     * Порівнює візити за конкретним підтипом і спільними даними.
+     *
+     * @param other інший об'єкт
+     * @return true, якщо об'єкти логічно рівні
+     */
+    @Override
+    public final boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+
+        VetVisit visit = (VetVisit) other;
+
+        return Double.compare(price, visit.price) == 0
+                && animal.equals(visit.animal)
+                && species.equals(visit.species)
+                && visitType.equals(visit.visitType);
+    }
+
+    /**
+     * Повертає хеш-код, узгоджений із equals.
+     *
+     * @return хеш-код візиту
+     */
+    @Override
+    public final int hashCode() {
+        return Objects.hash(
+                getClass(),
+                animal,
+                species,
+                visitType,
+                price);
     }
 
     /**
@@ -145,7 +211,7 @@ public final class VetVisit {
      * @return відформатований опис візиту
      */
     @Override
-    public String toString() {
+    public final String toString() {
         return String.format(
                 Locale.ROOT,
                 "%s; %s; %s; %.2f; urgent=%s",
@@ -153,7 +219,7 @@ public final class VetVisit {
                 species,
                 visitType,
                 price,
-                urgent);
+                isUrgent());
     }
 
     /**
