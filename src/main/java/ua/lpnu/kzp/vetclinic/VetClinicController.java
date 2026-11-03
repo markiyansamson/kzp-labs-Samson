@@ -14,6 +14,12 @@ import java.util.Locale;
 public final class VetClinicController {
 
     /**
+     * Створює контролер обробки даних ветеринарної клініки.
+     */
+    public VetClinicController() {
+    }
+    
+    /**
      * Виконує повний цикл обробки вхідного файла.
      *
      * @param arguments параметри запуску
