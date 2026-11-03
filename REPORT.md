@@ -2770,3 +2770,1656 @@ SpotBugs завершується з нульовою кількістю деф�
 ```text
 v3.0.0
 ```
+
+# Звіт до лабораторної роботи №4
+
+## 1. Тема, номер і варіант
+
+**Тема:** Потокова обробка даних у Java-проєкті.
+
+**Лабораторна робота:** №4.
+
+**Варіант:** 21.
+
+**Предметна область:** Ветклініка.
+
+**Операційна система:** Windows.
+
+**GitHub-репозиторій:**  
+https://github.com/markiyansamson/kzp-labs-Samson
+
+Лабораторна робота №4 є наступним етапом розвитку того самого програмного продукту.
+
+Послідовність основних версій:
+
+```text
+LAB 01 → 1.0.0 → v1.0.0
+LAB 02 → 2.0.0 → v2.0.0
+LAB 03 → 3.0.0 → v3.0.0
+LAB 04 → 4.0.0 → v4.0.0
+```
+
+Версія продукту LAB 04:
+
+```text
+4.0.0
+```
+
+Фінальний Git-тег:
+
+```text
+v4.0.0
+```
+
+У LAB 04 новий продукт не створювався. Предметна модель, Maven-інфраструктура, GitHub-репозиторій та архітектура попередніх лабораторних робіт збережені.
+
+---
+
+## 2. Мета роботи
+
+Мета лабораторної роботи — замінити основні циклові обчислення над предметною колекцією декларативними запитами Java Stream API, не змінюючи зовнішню поведінку програми.
+
+У LAB 04 реалізовано:
+
+- відбір елементів через `filter`;
+- перетворення через `map`;
+- групування через `Collectors.groupingBy`;
+- зведену статистику через `Collectors.summarizingDouble`;
+- складене сортування через `Comparator`;
+- `reversed()` і `thenComparing()`;
+- вибір top-N через `sorted()` і `limit()`;
+- безпечний пошук через `Optional` і `findFirst()`;
+- рефакторинг реального обчислення `VetClinicController.calculateSummary()` з циклу на Stream API;
+- перевірку еквівалентності циклової та потокової реалізації;
+- перевірку порожнього входу;
+- перевірку дублікатів;
+- перевірку граничного значення фільтра;
+- перевірку другого критерію компаратора;
+- перевірку граничних значень `N`;
+- перевірку відсутності мутації вхідної колекції.
+
+Після виконання LAB 04 продукт досяг стану, у якому основні запити до предметної колекції описуються декларативно, а всі попередні функціональні можливості залишаються працездатними.
+
+---
+
+## 3. Стан до і після цієї роботи
+
+### Стан після LAB 03
+
+У LAB 03 предметна модель уже була поліморфною:
+
+```text
+VetVisit
+├── RoutineVisit
+└── UrgentVisit
+```
+
+Основний підсумок обчислювався циклом:
+
+```java
+double totalPrice = 0.0;
+int urgentCount = 0;
+
+for (VetVisit visit : visits) {
+    totalPrice += visit.finalCost();
+
+    if (visit.isUrgent()) {
+        urgentCount++;
+    }
+}
+```
+
+Цей код був коректним, але умови відбору та накопичення значень описувалися вручну.
+
+### Стан після LAB 04
+
+У LAB 04 основне обчислення переписано через Stream API:
+
+```java
+double totalPrice = visits.stream()
+        .mapToDouble(VetVisit::finalCost)
+        .sum();
+
+int urgentCount = Math.toIntExact(
+        visits.stream()
+                .filter(VetVisit::isUrgent)
+                .count());
+```
+
+Також створено окремий компонент:
+
+```text
+VetVisitQueries
+```
+
+який містить незалежні запити до:
+
+```java
+List<VetVisit>
+```
+
+Загальна схема:
+
+```text
+List<VetVisit>
+      ↓
+    stream()
+      ↓
+filter / map / sorted
+      ↓
+groupingBy / statistics / Optional
+      ↓
+готовий результат запиту
+```
+
+При цьому зовнішня поведінка контрольного сценарію не змінилася.
+
+---
+
+## 4. Контракт даних
+
+Предметний тип LAB 04 успадковано з LAB 03.
+
+Базовий тип:
+
+```java
+abstract class VetVisit
+```
+
+Конкретні підтипи:
+
+```text
+RoutineVisit
+UrgentVisit
+```
+
+Спільні дані:
+
+```text
+animal
+species
+visitType
+price
+kind
+```
+
+Тип категорії:
+
+```java
+VisitKind
+```
+
+зі значеннями:
+
+```text
+ROUTINE
+URGENT
+```
+
+Поліморфна операція:
+
+```java
+double finalCost()
+```
+
+Для `RoutineVisit`:
+
+```text
+finalCost = price
+```
+
+Для `UrgentVisit`:
+
+```text
+finalCost = max(price, 1000.00)
+```
+
+Основні правила валідності:
+
+- `animal` не може бути `null` або порожнім;
+- `species` не може бути `null` або порожнім;
+- `visitType` не може бути `null` або порожнім;
+- `price` має бути скінченним невід'ємним числом;
+- `kind` не може бути `null`.
+
+### Адаптація варіанта №21
+
+У методичному варіанті №21 описано візит із полями:
+
+```text
+тварина
+вид
+власник
+дата
+діагноз
+вартість
+```
+
+Проте наскрізний продукт після LAB 03 вже мав стабільний контракт:
+
+```text
+animal
+species
+visitType
+price
+kind
+```
+
+Щоб не ламати попередню модель, CSV-формат і регресійні тести, для LAB 04 запити адаптовано до наявного контракту:
+
+```text
+filter     → price > threshold
+map        → species
+grouping   → кількість за species
+statistics → price
+top-N      → price ↓, animal ↑
+Optional   → пошук за animal
+```
+
+Обов’язкові категорії Stream API при цьому повністю збережено.
+
+---
+
+## 5. П’ять потокових запитів
+
+Для потокових запитів створено окремий клас:
+
+```text
+VetVisitQueries
+```
+
+Запити є чистими: вони не змінюють вхідний список і створюють новий `Stream` для кожного незалежного обчислення.
+
+### Запит 1 — відбір через filter
+
+Метод:
+
+```java
+visitsAbovePrice(
+        List<VetVisit> visits,
+        double threshold)
+```
+
+Тип результату:
+
+```java
+List<VetVisit>
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+filter(price > threshold)
+     ↓
+toList()
+```
+
+Ключова операція:
+
+```java
+.filter(visit -> visit.getPrice() > threshold)
+```
+
+Фільтр є строгим.
+
+Якщо:
+
+```text
+threshold = 500.00
+```
+
+то запис із:
+
+```text
+price = 500.00
+```
+
+не потрапляє до результату.
+
+Некоректний поріг:
+
+```text
+threshold < 0
+NaN
+Infinity
+```
+
+відхиляється через:
+
+```text
+IllegalArgumentException
+```
+
+---
+
+### Запит 2 — перетворення через map
+
+Метод:
+
+```java
+species(List<VetVisit> visits)
+```
+
+Тип результату:
+
+```java
+List<String>
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+map(VetVisit::getSpecies)
+     ↓
+toList()
+```
+
+Ключова операція:
+
+```java
+.map(VetVisit::getSpecies)
+```
+
+Приклад:
+
+```text
+Мурка → кіт
+Бім   → собака
+Рекс  → собака
+```
+
+Результат:
+
+```text
+[кіт, собака, собака]
+```
+
+Повторення не видаляються, оскільки `distinct()` не є частиною контракту цього запиту.
+
+---
+
+### Запит 3 — групування через groupingBy
+
+Метод:
+
+```java
+countBySpecies(List<VetVisit> visits)
+```
+
+Тип результату:
+
+```java
+Map<String, Long>
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+groupingBy(species)
+     ↓
+counting()
+     ↓
+Map<String, Long>
+```
+
+Реалізація:
+
+```java
+.collect(Collectors.groupingBy(
+        VetVisit::getSpecies,
+        TreeMap::new,
+        Collectors.counting()));
+```
+
+Приклад:
+
+```text
+кіт     → 3
+собака  → 2
+кінь    → 1
+```
+
+`TreeMap` використовується для стабільного порядку ключів.
+
+---
+
+### Запит 4 — зведена статистика
+
+Метод:
+
+```java
+priceStatistics(List<VetVisit> visits)
+```
+
+Тип результату:
+
+```java
+DoubleSummaryStatistics
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+summarizingDouble(price)
+     ↓
+DoubleSummaryStatistics
+```
+
+Реалізація:
+
+```java
+.collect(Collectors.summarizingDouble(
+        VetVisit::getPrice));
+```
+
+Результат містить:
+
+```text
+count
+sum
+min
+max
+average
+```
+
+Для тестового набору з шести записів:
+
+```text
+count = 6
+sum = 4400.00
+min = 350.00
+max = 1200.00
+average ≈ 733.33
+```
+
+---
+
+### Запит 5 — top-N
+
+Метод:
+
+```java
+topByPrice(
+        List<VetVisit> visits,
+        int limit)
+```
+
+Тип результату:
+
+```java
+List<VetVisit>
+```
+
+Основний критерій:
+
+```text
+price — за спаданням
+```
+
+Другий критерій:
+
+```text
+animal — за зростанням
+```
+
+Компаратор:
+
+```java
+Comparator<VetVisit> byPriceAndAnimal =
+        Comparator.comparingDouble(VetVisit::getPrice)
+                .reversed()
+                .thenComparing(VetVisit::getAnimal);
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+sorted(comparator)
+     ↓
+limit(N)
+     ↓
+toList()
+```
+
+Порядок:
+
+```text
+sorted(...)
+↓
+limit(N)
+```
+
+є принциповим.
+
+Якби спочатку виконувався `limit`, сортувалася б лише частина початкового набору.
+
+Основний сценарій LAB 04:
+
+```text
+N = 5
+```
+
+Для перевірки використовується щонайменше шість записів.
+
+Граничні випадки:
+
+```text
+N < 0
+→ IllegalArgumentException
+
+N = 0
+→ []
+
+N > size
+→ усі доступні записи
+```
+
+---
+
+## 6. Групування та статистика
+
+### Групування
+
+Ключ:
+
+```text
+species
+```
+
+Тип ключа:
+
+```java
+String
+```
+
+Тип агрегату:
+
+```java
+Long
+```
+
+Тип результату:
+
+```java
+Map<String, Long>
+```
+
+Downstream collector:
+
+```java
+Collectors.counting()
+```
+
+Приклад:
+
+```text
+кінь=1
+кіт=3
+собака=2
+```
+
+### Статистика
+
+Статистика виконується за:
+
+```text
+VetVisit.getPrice()
+```
+
+Collector:
+
+```java
+Collectors.summarizingDouble(...)
+```
+
+Отримуються:
+
+```text
+count
+sum
+min
+max
+average
+```
+
+### Порожній вхід
+
+Для порожнього списку:
+
+```text
+count = 0
+sum = 0.0
+```
+
+Значення `min` і `max` у `DoubleSummaryStatistics` для порожнього потоку мають спеціальні значення, тому у користувацькому звіті порожній випадок повинен оброблятися явно.
+
+Форматування дробових значень у продукті виконується через:
+
+```java
+Locale.ROOT
+```
+
+щоб десятковий роздільник не залежав від операційної системи.
+
+---
+
+## 7. Складений компаратор
+
+Top-N використовує складений comparator.
+
+Основний критерій:
+
+```text
+price
+```
+
+Напрямок:
+
+```text
+descending
+```
+
+Другий критерій:
+
+```text
+animal
+```
+
+Напрямок:
+
+```text
+ascending
+```
+
+Реалізація:
+
+```java
+Comparator.comparingDouble(VetVisit::getPrice)
+        .reversed()
+        .thenComparing(VetVisit::getAnimal);
+```
+
+Важливо, що:
+
+```java
+reversed()
+```
+
+застосовано до першого критерію до:
+
+```java
+thenComparing(...)
+```
+
+Приклад однакових цін:
+
+```text
+Альфа → 1200.00
+Рекс  → 1200.00
+```
+
+За другим критерієм:
+
+```text
+Альфа
+Рекс
+```
+
+Тобто тест перевіряє не лише основне сортування, а й tie-breaker.
+
+Після повного сортування виконується:
+
+```java
+.limit(limit)
+```
+
+---
+
+## 8. Optional-пошук
+
+Метод:
+
+```java
+findByAnimal(
+        List<VetVisit> visits,
+        String animal)
+```
+
+Тип результату:
+
+```java
+Optional<VetVisit>
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+     ↓
+stream()
+     ↓
+filter(animal)
+     ↓
+findFirst()
+     ↓
+Optional<VetVisit>
+```
+
+Реалізація:
+
+```java
+return streamOf(visits)
+        .filter(visit ->
+                visit.getAnimal().equals(animal))
+        .findFirst();
+```
+
+Знайдений запис:
+
+```text
+Optional містить VetVisit
+```
+
+Відсутній запис:
+
+```text
+Optional.empty()
+```
+
+Метод не повертає `null`.
+
+### Дубльований ключ
+
+У тестовому наборі присутні два записи:
+
+```text
+Рекс
+```
+
+`findFirst()` повертає перший запис у початковому порядку.
+
+Ця поведінка є детермінованою для послідовного stream над впорядкованим списком.
+
+---
+
+## 9. Еквівалентність циклу та Stream API
+
+Основна циклова реалізація LAB 03:
+
+```java
+double totalPrice = 0.0;
+int urgentCount = 0;
+
+for (VetVisit visit : visits) {
+    totalPrice += visit.finalCost();
+
+    if (visit.isUrgent()) {
+        urgentCount++;
+    }
+}
+```
+
+Потокова реалізація LAB 04:
+
+```java
+double totalPrice = visits.stream()
+        .mapToDouble(VetVisit::finalCost)
+        .sum();
+
+int urgentCount = Math.toIntExact(
+        visits.stream()
+                .filter(VetVisit::isUrgent)
+                .count());
+```
+
+### Таблиця «цикл → Stream API → результат»
+
+| Операція | Циклова реалізація | Stream API | Результат |
+|---|---|---|---|
+| Відбір | `if` у циклі | `filter` | однаковий набір |
+| Перетворення | ручне додавання | `map` | однакові значення |
+| Групування | `Map` + manual update | `groupingBy` | однакові агрегати |
+| Статистика | accumulator variables | `summarizingDouble` | однакові показники |
+| Сума | `total += value` | `mapToDouble().sum()` | однакова сума |
+| Кількість urgent | `if` + counter | `filter().count()` | однакова кількість |
+| Сортування | ручний comparator | `sorted(comparator)` | той самий порядок |
+| Top-N | sort + ручне усікання | `sorted().limit()` | той самий top-N |
+| Пошук | цикл + службове значення | `findFirst()` | знайдений/відсутній |
+| Відсутність | `null` | `Optional.empty()` | явний результат |
+
+Для перевірки створено:
+
+```text
+VetClinicStreamRegressionTest
+```
+
+У тесті стара циклова реалізація використовується як еталон, після чого її результат порівнюється з:
+
+```java
+VetClinicController.calculateSummary(visits)
+```
+
+---
+
+## 10. Тестування
+
+До LAB 04 продукт містив:
+
+```text
+37 тестів
+```
+
+Після LAB 04:
+
+```text
+50 JUnit 5 тестів
+```
+
+Усі 37 попередніх тестів збережено.
+
+Новий клас:
+
+```text
+VetVisitQueriesTest
+```
+
+містить тести для:
+
+- фільтра за ціною;
+- межі фільтра;
+- некоректного порога;
+- map видів;
+- збереження дублікатів;
+- groupingBy;
+- статистики;
+- top-5;
+- складеного comparator;
+- другого критерію;
+- `N = 0`;
+- `N > size`;
+- `N < 0`;
+- знайденого Optional;
+- відсутнього Optional;
+- дубльованого ключа;
+- порожнього списку;
+- відсутності мутації.
+
+Окремий:
+
+```text
+VetClinicStreamRegressionTest
+```
+
+перевіряє еквівалентність:
+
+```text
+legacy loop
+↕
+Stream API
+```
+
+### Результат
+
+Команда:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Результат:
+
+```text
+Tests run: 50
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
+## 11. Інфраструктура
+
+LAB 04 успадковує:
+
+- Maven Wrapper;
+- Java 21;
+- JUnit 5;
+- SpotBugs;
+- Maven Shade Plugin;
+- executable JAR;
+- GitHub Actions;
+- CI matrix;
+- GitHub Issues;
+- Pull Request workflow.
+
+### Версія
+
+У:
+
+```text
+pom.xml
+```
+
+встановлено:
+
+```xml
+<version>4.0.0</version>
+```
+
+Java-код не містить вручну записаної версії `4.0.0`.
+
+Maven resource filtering формує:
+
+```properties
+app.version=4.0.0
+```
+
+Перевірка:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-4.0.0.jar --version
+```
+
+Результат:
+
+```text
+4.0.0
+```
+
+### Повна перевірка
+
+Команда:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Результат:
+
+```text
+BugInstance size is 0
+Error size is 0
+No errors/warnings found
+BUILD SUCCESS
+```
+
+### Javadoc
+
+Команда:
+
+```powershell
+.\mvnw.cmd javadoc:javadoc
+```
+
+Результат:
+
+```text
+BUILD SUCCESS
+```
+
+Javadoc генерується без warnings.
+
+### JAR
+
+Файл:
+
+```text
+target/lab01-4.0.0.jar
+```
+
+Контрольний запуск:
+
+```text
+Коректних записів: 3
+Середня вартість: 683.33
+Загальний виторг: 2050.00
+Ургентних візитів: 1
+Помилок: 2
+```
+
+Таким чином зовнішній контрольний результат LAB 03 після Stream-рефакторингу не змінився.
+
+---
+
+## 12. GitHub Issues і Pull Request
+
+Для LAB 04 створено 9 Issues:
+
+| Issue | Зміна | Перевірка |
+|---|---|---|
+| #26 | price filter | threshold / boundary |
+| #27 | species map | порядок і дублікати |
+| #28 | grouping by species | кількість у групах |
+| #29 | price statistics | count/sum/min/max/avg |
+| #30 | top-N comparator | order / tie-breaker / N |
+| #31 | Optional search | found / empty / duplicate |
+| #32 | regression tests | 50 tests / no mutation |
+| #33 | README, REPORT, Javadoc | документація |
+| #34 | version, CI, release | 4.0.0 / artifact / CI |
+
+Основна гілка LAB 04:
+
+```text
+lab04-streams
+```
+
+Основний Pull Request:
+
+```text
+#35 — LAB 04: Refactor data processing with Stream API
+```
+
+Посилання:
+
+https://github.com/markiyansamson/kzp-labs-Samson/pull/35
+
+PR містив:
+
+- `VetVisitQueries`;
+- рефакторинг `VetClinicController`;
+- 50 тестів;
+- версію `4.0.0`;
+- CI artifact `lab01-4.0.0.jar`;
+- README LAB 04.
+
+### CI для PR #35
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/41726366291
+
+Результати:
+
+```text
+Ubuntu  — SUCCESS
+Windows — SUCCESS
+macOS   — SUCCESS
+```
+
+Artifact PR:
+
+https://github.com/markiyansamson/kzp-labs-Samson/suites/113073602203/artifacts/13275226035
+
+---
+
+## 13. Порівняння реалізацій
+
+### Циклова реалізація
+
+Переваги:
+
+- знайома імперативна форма;
+- покроково видно зміну accumulator-змінних;
+- проста для коротких процедур.
+
+Недоліки:
+
+- умова, накопичення та зміна стану часто змішуються;
+- потрібні додаткові змінні;
+- групування вимагає ручного оновлення `Map`;
+- пошук часто спонукає використовувати `null`;
+- складніші запити стають громіздкими.
+
+### Stream API
+
+Переваги:
+
+- запит описує, що потрібно отримати;
+- `filter` відокремлює відбір;
+- `map` відокремлює перетворення;
+- `groupingBy` описує агрегацію;
+- `summarizingDouble` одразу формує статистику;
+- `Comparator` централізовано описує порядок;
+- `Optional` робить відсутність результату явною;
+- запити легше тестувати окремо;
+- джерело не мутується.
+
+### Приклад
+
+Було:
+
+```java
+double totalPrice = 0.0;
+
+for (VetVisit visit : visits) {
+    totalPrice += visit.finalCost();
+}
+```
+
+Стало:
+
+```java
+double totalPrice = visits.stream()
+        .mapToDouble(VetVisit::finalCost)
+        .sum();
+```
+
+Потокова реалізація коротша, але головною перевагою є не кількість рядків, а те, що операції мають чіткий декларативний зміст.
+
+Не кожен цикл потрібно механічно замінювати на Stream API.
+
+Наприклад, цикл читання CSV у `VetClinicController`, де необхідно:
+
+- знати номер рядка;
+- локально обробляти exception;
+- накопичувати повідомлення про помилки;
+
+залишено цикловим, оскільки в цьому місці така форма є зрозумілою і не є основним предметним запитом до колекції.
+
+---
+
+## 14. Академічна доброчесність
+
+Під час виконання LAB 04 використовувався ChatGPT як консультативний інструмент.
+
+### Інструмент
+
+```text
+ChatGPT
+```
+
+### Ролі
+
+**Менеджер**
+
+Допомога у декомпозиції роботи на Issues #26–#34.
+
+**Розробник**
+
+Допомога у формуванні варіантів Stream API конвеєрів.
+
+**Валідатор**
+
+Допомога у визначенні крайових випадків:
+
+- boundary threshold;
+- duplicate key;
+- empty collection;
+- tie-breaker;
+- `N = 0`;
+- `N > size`;
+- `N < 0`;
+- missing Optional.
+
+**DevOps**
+
+Допомога у перевірці:
+
+- Maven;
+- SpotBugs;
+- Javadoc;
+- executable JAR;
+- GitHub Actions;
+- CI artifact;
+- версіонування.
+
+**Документатор**
+
+Допомога у структурі README та REPORT і таблиці:
+
+```text
+цикл → Stream API → результат
+```
+
+**Рецензент**
+
+Перевірка:
+
+- відсутності ручного циклу в основних Stream-запитах;
+- відсутності центрального `if` за конкретним підтипом;
+- відсутності мутації вхідної колекції;
+- коректного порядку `sorted().limit()`.
+
+### Приклади запитів до ШІ
+
+```text
+Як винести п'ять Stream API запитів у окремий клас?
+```
+
+```text
+Як реалізувати groupingBy для кількості VetVisit за species?
+```
+
+```text
+Як правильно побудувати comparator: price descending, animal ascending?
+```
+
+```text
+Які edge cases потрібні для top-N і Optional?
+```
+
+```text
+Як довести тестом еквівалентність старого циклу та Stream API?
+```
+
+### Прийняті пропозиції
+
+Прийнято:
+
+- окремий `VetVisitQueries`;
+- `filter`;
+- `map`;
+- `groupingBy`;
+- `summarizingDouble`;
+- `Comparator.reversed().thenComparing()`;
+- `sorted().limit()`;
+- `Optional.findFirst()`;
+- окремий regression test;
+- тест відсутності мутації.
+
+### Відхилені або уточнені пропозиції
+
+Не було прийнято ідею механічно переписувати всі цикли програми на Stream API.
+
+Цикл читання CSV залишено, оскільки він:
+
+- зберігає номер рядка;
+- обробляє exception конкретного запису;
+- додає повідомлення до списку помилок.
+
+Також не було додано нові поля `owner` та `date` лише заради LAB 04, оскільки це змінило б стабільний контракт LAB 03 та формат даних попередніх робіт.
+
+Замість цього специфіку варіанта адаптовано до наявного наскрізного продукту.
+
+### Виправлені помилки
+
+Під час роботи:
+
+- оновлено CI artifact з `lab01-3.0.0.jar` на `lab01-4.0.0.jar`;
+- додано відсутній Javadoc до конструктора `VetClinicController`;
+- після цього `javadoc:javadoc` проходить без warnings;
+- перевірено, що версія `4.0.0` не дублюється в Java-коді.
+
+### Власний внесок
+
+Самостійно виконано:
+
+- створення GitHub Issues;
+- створення гілки;
+- редагування коду;
+- запуск Maven-команд;
+- аналіз результатів тестів;
+- роботу з Git;
+- створення Pull Request;
+- перевірку CI;
+- створення Git-тега;
+- перевірку artifact;
+- підготовку документації.
+
+Фінальний код перевірено локально та через GitHub Actions.
+
+---
+
+## 15. Відповіді на контрольні питання
+
+### 1. Чим потік відрізняється від колекції?
+
+Колекція зберігає елементи.
+
+Stream не є контейнером. Він описує обчислення над джерелом даних.
+
+### 2. Які частини має типовий конвеєр Stream API?
+
+Типовий конвеєр має:
+
+1. джерело;
+2. проміжні операції;
+3. кінцеву операцію.
+
+Наприклад:
+
+```text
+List
+↓
+stream()
+↓
+filter()
+↓
+map()
+↓
+toList()
+```
+
+### 3. Чому проміжні операції називають лінивими?
+
+Тому що `filter`, `map`, `sorted` та інші проміжні операції не виконують повний конвеєр одразу.
+
+Робота запускається кінцевою операцією.
+
+### 4. Що робить filter і який тип має його предикат?
+
+`filter` залишає елементи, для яких предикат повертає `true`.
+
+Логічно предикат має тип:
+
+```java
+Predicate<T>
+```
+
+### 5. Чим map відрізняється від mapToDouble?
+
+`map` перетворює елемент у довільний об'єкт.
+
+`mapToDouble` формує спеціалізований:
+
+```java
+DoubleStream
+```
+
+і дозволяє виконувати числові операції без зайвого boxing.
+
+### 6. Для чого застосовується distinct?
+
+`distinct()` видаляє логічні дублікати.
+
+Його результат залежить від коректності:
+
+```text
+equals()
+hashCode()
+```
+
+### 7. Чому sorted().limit(N) відрізняється від limit(N).sorted()?
+
+```text
+sorted().limit(N)
+```
+
+спочатку сортує весь набір і бере найкращі `N`.
+
+```text
+limit(N).sorted()
+```
+
+спочатку бере перші `N` початкових елементів і лише їх сортує.
+
+Для top-N правильним є перший варіант.
+
+### 8. Яку роль виконує кінцева операція?
+
+Кінцева операція запускає конвеєр та формує результат або побічний ефект.
+
+Приклади:
+
+```text
+toList()
+collect()
+sum()
+count()
+findFirst()
+```
+
+### 9. Коли використовується Collectors.joining?
+
+Коли потрібно зібрати рядкові елементи потоку в один рядок із заданим роздільником, префіксом або суфіксом.
+
+### 10. Як groupingBy будує карту груп?
+
+`groupingBy` викликає функцію класифікації для кожного елемента та розміщує елемент або агрегат у групі з відповідним ключем.
+
+У LAB 04:
+
+```text
+species → count
+```
+
+### 11. Як отримати суму в кожній групі через downstream collector?
+
+Наприклад:
+
+```java
+Collectors.groupingBy(
+        keyFunction,
+        Collectors.summingDouble(valueFunction))
+```
+
+### 12. Які показники містить DoubleSummaryStatistics?
+
+Вона містить:
+
+```text
+count
+sum
+min
+max
+average
+```
+
+### 13. Які значення має статистика для порожнього потоку?
+
+Для порожнього потоку:
+
+```text
+count = 0
+sum = 0
+```
+
+а `min` та `max` мають спеціальні нескінченні значення, тому їх потрібно обробляти явно перед відображенням користувачу.
+
+### 14. Як утворюється складений компаратор?
+
+Перший критерій будується через:
+
+```java
+Comparator.comparing...
+```
+
+Наступний додається через:
+
+```java
+thenComparing(...)
+```
+
+### 15. Чому reversed() потрібно застосовувати до окремого ключа до thenComparing?
+
+Якщо викликати `reversed()` після створення всього складеного comparator, буде змінено напрямок усіх критеріїв.
+
+У LAB 04 потрібно:
+
+```text
+price ↓
+animal ↑
+```
+
+тому `reversed()` застосовується лише до `price`.
+
+### 16. Яку проблему розв'язує Optional?
+
+`Optional` робить можливу відсутність результату явною частиною контракту методу.
+
+Метод не повертає `null`.
+
+### 17. Чим відрізняються orElse, orElseThrow і ifPresent?
+
+`orElse` повертає значення за замовчуванням.
+
+`orElseThrow` кидає exception, якщо результат відсутній.
+
+`ifPresent` виконує дію лише за наявності значення.
+
+### 18. Чому накопичення результату у зовнішній список через forEach небажане?
+
+Тому що створюється зовнішній змінний стан і побічний ефект.
+
+Краще:
+
+```java
+stream()
+    .map(...)
+    .toList()
+```
+
+### 19. Що потрібно перевірити під час рефакторингу циклу на Stream API?
+
+Потрібно перевірити:
+
+- значення результату;
+- порядок;
+- суми;
+- кількості;
+- мінімум;
+- максимум;
+- середнє;
+- дублікати;
+- порожній вхід;
+- граничні значення;
+- відсутність мутації;
+- усі старі regression tests.
+
+### 20. Коли parallelStream може бути виправданим?
+
+Коли:
+
+- набір даних достатньо великий;
+- операції не залежать від спільного змінного стану;
+- агрегування є безпечним;
+- вимірювання показують реальне прискорення.
+
+Для невеликого набору LAB 04 використовується звичайний послідовний `stream()`.
+
+---
+
+## 16. Висновки
+
+У лабораторній роботі №4 основні обчислення над предметною колекцією ветеринарних візитів було переведено з імперативної циклової форми на Java Stream API.
+
+Створено окремий компонент:
+
+```text
+VetVisitQueries
+```
+
+який містить п’ять незалежних потокових запитів і Optional-пошук.
+
+Реалізовано:
+
+- `filter`;
+- `map`;
+- `groupingBy`;
+- `summarizingDouble`;
+- складений `Comparator`;
+- `sorted`;
+- `limit`;
+- `Optional`;
+- `findFirst`.
+
+Основний реальний метод:
+
+```text
+VetClinicController.calculateSummary()
+```
+
+також переведено на Stream API.
+
+При цьому збережено поліморфну поведінку LAB 03 через:
+
+```java
+VetVisit::finalCost
+```
+
+Порівняння старої циклової реалізації та нового Stream API підтверджено окремим regression test.
+
+Кількість автоматизованих тестів збільшилась:
+
+```text
+37 → 50
+```
+
+Усі:
+
+```text
+50 / 50
+```
+
+тестів проходять успішно.
+
+SpotBugs:
+
+```text
+0 bugs
+0 errors
+```
+
+Javadoc генерується без warnings.
+
+Контрольна зовнішня поведінка LAB 03 залишилася незмінною:
+
+```text
+Коректних записів: 3
+Середня вартість: 683.33
+Загальний виторг: 2050.00
+Ургентних візитів: 1
+Помилок: 2
+```
+
+GitHub Actions успішно перевірив LAB 04 на:
+
+```text
+Ubuntu
+Windows
+macOS
+```
+
+Фінальний стан LAB 04 зафіксовано версією:
+
+```text
+4.0.0
+```
+
+та Git-тегом:
+
+```text
+v4.0.0
+```
+
+---
+
+# Посилання на ресурси LAB 04
+
+**GitHub-репозиторій:**  
+https://github.com/markiyansamson/kzp-labs-Samson
+
+**Pull Request LAB 04 (#35):**  
+https://github.com/markiyansamson/kzp-labs-Samson/pull/35
+
+**GitHub Actions для PR #35:**  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/41726366291
+
+**JAR artifact для PR #35:**  
+https://github.com/markiyansamson/kzp-labs-Samson/suites/113073602203/artifacts/13275226035
+
+**Фінальний GitHub Actions run для v4.0.0:**  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/41728829105
+
+**Фінальний JAR artifact:**  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/41728829105/artifacts/13275713431
+
+**Release / Git-тег v4.0.0:**  
+https://github.com/markiyansamson/kzp-labs-Samson/releases/tag/v4.0.0
+
+### Фінальна кросплатформна перевірка
+
+```text
+Ubuntu  — SUCCESS
+Windows — SUCCESS
+macOS   — SUCCESS
+```
