@@ -1198,3 +1198,799 @@ target/lab01-3.0.0.jar
 - CI-конфігурацію для `lab01-3.0.0.jar`.
 
 Фінальні GitHub Actions, artifact, Pull Request і Git-тег `v3.0.0` додаються після завершення документації та merge.
+
+# Лабораторна робота №4
+
+## Потокова обробка даних у Java-проєкті
+
+### Варіант
+
+- номер варіанта: **21**;
+- предметна область: **Ветклініка**;
+- версія продукту LAB 04: **4.0.0**;
+- фінальний Git-тег LAB 04: **v4.0.0**.
+
+LAB 04 продовжує той самий програмний продукт:
+
+```text
+LAB 01 → 1.0.0 → v1.0.0
+LAB 02 → 2.0.0 → v2.0.0
+LAB 03 → 3.0.0 → v3.0.0
+LAB 04 → 4.0.0 → v4.0.0
+```
+
+Попередні версії та Git-теги не змінюються.
+
+---
+
+## Мета LAB 04
+
+Мета роботи — замінити основні циклові обчислення над предметною колекцією на декларативні запити Stream API без зміни зовнішньої поведінки програми.
+
+У LAB 04 реалізовано:
+
+- `filter`;
+- `map`;
+- `Collectors.groupingBy`;
+- `Collectors.summarizingDouble`;
+- складений `Comparator`;
+- `sorted`;
+- `limit`;
+- `Optional`;
+- регресійне порівняння циклової та потокової реалізації;
+- перевірку відсутності мутації вхідної колекції.
+
+---
+
+## Збереження архітектури LAB 03
+
+LAB 04 не створює новий продукт і не змінює предметну модель LAB 03.
+
+Зберігаються:
+
+```text
+VetVisit
+├── RoutineVisit
+└── UrgentVisit
+```
+
+Також зберігаються:
+
+- `VisitKind`;
+- `finalCost()`;
+- `equals()` і `hashCode()`;
+- `CliParser`;
+- `AppVersion`;
+- `VetClinicController`;
+- мінімальний `Main`;
+- Maven-based versioning.
+
+`pom.xml` залишається єдиним джерелом версії.
+
+---
+
+## Версіювання
+
+У `pom.xml`:
+
+```xml
+<version>4.0.0</version>
+```
+
+У Java-коді немає константи:
+
+```text
+VERSION = "4.0.0"
+```
+
+Maven автоматично формує:
+
+```properties
+app.version=4.0.0
+```
+
+у:
+
+```text
+target/classes/version.properties
+```
+
+Перевірка:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-4.0.0.jar --version
+```
+
+Результат:
+
+```text
+4.0.0
+```
+
+---
+
+## Компонент потокових запитів
+
+Для LAB 04 створено окремий клас:
+
+```text
+VetVisitQueries
+```
+
+Він містить чисті запити над:
+
+```java
+List<VetVisit>
+```
+
+Запити не змінюють вхідну колекцію.
+
+Для кожного незалежного запиту створюється новий:
+
+```java
+stream()
+```
+
+---
+
+## Адаптація варіанта до наскрізного продукту
+
+Методичний варіант №21 передбачає ветеринарний візит і запити над його параметрами.
+
+У наскрізному продукті після LAB 03 фактичний контракт `VetVisit` уже містить:
+
+```text
+animal
+species
+visitType
+price
+kind
+```
+
+та підтипи:
+
+```text
+RoutineVisit
+UrgentVisit
+```
+
+Щоб не ламати CSV-формат і модель попередніх лабораторних робіт, LAB 04 використовує саме ці поля.
+
+Потокові запити реалізовано так:
+
+```text
+filter       → price > threshold
+map          → species
+groupingBy   → кількість за species
+statistics   → price
+top-N        → price ↓, animal ↑
+Optional     → пошук за animal
+```
+
+Ця адаптація зберігає наскрізну модель LAB 03 та дозволяє перевірити всі обов’язкові Stream API операції.
+
+---
+
+## 1. Filter — відбір за вартістю
+
+Метод:
+
+```java
+visitsAbovePrice(
+        List<VetVisit> visits,
+        double threshold)
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+    ↓
+stream()
+    ↓
+filter(price > threshold)
+    ↓
+toList()
+```
+
+Реалізація використовує строгу умову:
+
+```java
+.filter(visit -> visit.getPrice() > threshold)
+```
+
+Запис із ціною рівно порогу не потрапляє до результату.
+
+Наприклад:
+
+```text
+threshold = 500.00
+```
+
+Для цін:
+
+```text
+350
+500
+700
+1200
+```
+
+результат містить:
+
+```text
+700
+1200
+```
+
+---
+
+## 2. Map — перетворення у види тварин
+
+Метод:
+
+```java
+species(List<VetVisit> visits)
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+    ↓
+stream()
+    ↓
+map(VetVisit::getSpecies)
+    ↓
+List<String>
+```
+
+Метод повертає види тварин у початковому порядку.
+
+Наприклад:
+
+```text
+кіт
+собака
+собака
+кінь
+кіт
+```
+
+Повторення не видаляються, оскільки `distinct()` не є частиною контракту цього запиту.
+
+---
+
+## 3. groupingBy — кількість візитів за видом
+
+Метод:
+
+```java
+countBySpecies(List<VetVisit> visits)
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+    ↓
+stream()
+    ↓
+Collectors.groupingBy(
+    VetVisit::getSpecies,
+    TreeMap::new,
+    Collectors.counting())
+    ↓
+Map<String, Long>
+```
+
+Приклад результату:
+
+```text
+кінь    → 1
+кіт     → 3
+собака  → 2
+```
+
+`TreeMap` використовується для стабільного порядку ключів.
+
+---
+
+## 4. Зведена статистика вартості
+
+Метод:
+
+```java
+priceStatistics(List<VetVisit> visits)
+```
+
+Використовується:
+
+```java
+Collectors.summarizingDouble(
+        VetVisit::getPrice)
+```
+
+Результат:
+
+```java
+DoubleSummaryStatistics
+```
+
+Він містить:
+
+```text
+count
+sum
+min
+max
+average
+```
+
+Для тестового набору з шести записів:
+
+```text
+count = 6
+sum = 4400.00
+min = 350.00
+max = 1200.00
+average ≈ 733.33
+```
+
+Для порожнього списку:
+
+```text
+count = 0
+sum = 0.0
+```
+
+Порожній випадок у представленні звіту повинен оброблятися явно.
+
+---
+
+## 5. Top-N зі складеним comparator
+
+Метод:
+
+```java
+topByPrice(
+        List<VetVisit> visits,
+        int limit)
+```
+
+Основний критерій:
+
+```text
+price — за спаданням
+```
+
+Другий критерій:
+
+```text
+animal — за зростанням
+```
+
+Comparator:
+
+```java
+Comparator.comparingDouble(VetVisit::getPrice)
+        .reversed()
+        .thenComparing(VetVisit::getAnimal);
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+    ↓
+stream()
+    ↓
+sorted(comparator)
+    ↓
+limit(N)
+    ↓
+toList()
+```
+
+Важливо:
+
+```text
+sorted(...)
+↓
+limit(N)
+```
+
+а не навпаки.
+
+Для LAB 04 основний top-N:
+
+```text
+N = 5
+```
+
+Для перевірки використовується щонайменше 6 записів.
+
+Граничні випадки:
+
+```text
+N < 0   → IllegalArgumentException
+N = 0   → порожній список
+N > size → усі доступні записи
+```
+
+Якщо дві ціни однакові, застосовується другий критерій.
+
+Наприклад:
+
+```text
+Альфа → 1200
+Рекс  → 1200
+```
+
+Результат:
+
+```text
+Альфа
+Рекс
+```
+
+---
+
+## 6. Optional-пошук
+
+Метод:
+
+```java
+findByAnimal(
+        List<VetVisit> visits,
+        String animal)
+```
+
+Конвеєр:
+
+```text
+List<VetVisit>
+    ↓
+stream()
+    ↓
+filter(...)
+    ↓
+findFirst()
+    ↓
+Optional<VetVisit>
+```
+
+Метод не повертає `null`.
+
+Знайдений результат:
+
+```text
+Optional<VetVisit>
+```
+
+Відсутній результат:
+
+```text
+Optional.empty()
+```
+
+Якщо ключ дублюється, `findFirst()` повертає перший запис у початковому порядку.
+
+---
+
+## Stream API у реальному процесі
+
+LAB 04 не обмежується окремим `VetVisitQueries`.
+
+Основне обчислення `VetClinicController.calculateSummary()` також переведено з ручного циклу на Stream API.
+
+Було:
+
+```java
+double totalPrice = 0.0;
+int urgentCount = 0;
+
+for (VetVisit visit : visits) {
+    totalPrice += visit.finalCost();
+
+    if (visit.isUrgent()) {
+        urgentCount++;
+    }
+}
+```
+
+Стало:
+
+```java
+double totalPrice = visits.stream()
+        .mapToDouble(VetVisit::finalCost)
+        .sum();
+
+int urgentCount = Math.toIntExact(
+        visits.stream()
+                .filter(VetVisit::isUrgent)
+                .count());
+```
+
+Поліморфізм LAB 03 збережено, оскільки використовується:
+
+```java
+VetVisit::finalCost
+```
+
+---
+
+## Порівняння цикл → Stream API
+
+| Операція | Циклова реалізація | Stream API |
+|---|---|---|
+| Відбір | `if` у циклі | `filter` |
+| Перетворення | ручне додавання | `map` |
+| Групування | `Map` + ручне оновлення | `groupingBy` |
+| Статистика | ручні accumulator variables | `summarizingDouble` |
+| Сортування | ручне сортування списку | `sorted` |
+| Top-N | сортування + ручне усікання | `sorted().limit()` |
+| Пошук | цикл + службове значення | `findFirst()` + `Optional` |
+| Сума | accumulator у `for` | `mapToDouble().sum()` |
+| Кількість urgent | `if` + counter | `filter().count()` |
+
+---
+
+## Регресійна перевірка
+
+Створено окремий:
+
+```text
+VetClinicStreamRegressionTest
+```
+
+У тесті попередня циклова реалізація використовується як еталон.
+
+Порівнюються:
+
+```text
+legacy loop
+        ↓
+totalPrice
+urgentCount
+```
+
+та:
+
+```text
+Stream API
+        ↓
+VetClinicController.calculateSummary()
+```
+
+Результати повинні бути однаковими.
+
+---
+
+## Збереження поведінки LAB 03
+
+Контрольний результат до LAB 04:
+
+```text
+Коректних записів: 3
+Середня вартість: 683.33
+Загальний виторг: 2050.00
+Ургентних візитів: 1
+Помилок: 2
+```
+
+Після переходу на Stream API результат:
+
+```text
+Коректних записів: 3
+Середня вартість: 683.33
+Загальний виторг: 2050.00
+Ургентних візитів: 1
+Помилок: 2
+```
+
+Отже:
+
+```text
+LAB 03 output == LAB 04 regression output
+```
+
+---
+
+## Тестування
+
+Після LAB 03:
+
+```text
+37 тестів
+```
+
+Після додавання Stream API:
+
+```text
+50 JUnit 5 тестів
+```
+
+Нові тести перевіряють:
+
+- filter;
+- значення на межі порога;
+- неправильний поріг;
+- map;
+- дублікати;
+- groupingBy;
+- statistics;
+- top-5;
+- складений comparator;
+- tie-breaker;
+- `N = 0`;
+- `N > size`;
+- `N < 0`;
+- знайдений Optional;
+- `Optional.empty()`;
+- дубльований ключ;
+- порожній список;
+- відсутність мутації;
+- еквівалентність циклу та Stream API.
+
+Команда:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Результат:
+
+```text
+Tests run: 50
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+```
+
+---
+
+## SpotBugs
+
+Повна перевірка:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Результат:
+
+```text
+BugInstance size is 0
+Error size is 0
+No errors/warnings found
+BUILD SUCCESS
+```
+
+---
+
+## Javadoc
+
+Команда:
+
+```powershell
+.\mvnw.cmd javadoc:javadoc
+```
+
+Результат:
+
+```text
+BUILD SUCCESS
+```
+
+Javadoc генерується без warnings.
+
+---
+
+## Виконуваний JAR
+
+Команда:
+
+```powershell
+.\mvnw.cmd clean package
+```
+
+Створюється:
+
+```text
+target/lab01-4.0.0.jar
+```
+
+Перевірка:
+
+```powershell
+& "$env:JAVA_HOME\bin\java.exe" -jar .\target\lab01-4.0.0.jar --version
+```
+
+Результат:
+
+```text
+4.0.0
+```
+
+---
+
+## GitHub Issues LAB 04
+
+Роботу розділено на:
+
+```text
+#26 — Implement price filter with Stream API
+#27 — Implement species mapping with Stream API
+#28 — Group VetVisit records by species
+#29 — Add visit price summary statistics
+#30 — Implement top-N visits with compound comparator
+#31 — Add Optional search for VetVisit
+#32 — Add Stream API and regression tests
+#33 — Update README REPORT and Javadoc
+#34 — Update version CI and release infrastructure
+```
+
+---
+
+## GitHub Actions
+
+CI виконує перевірку на:
+
+```text
+ubuntu-latest
+windows-latest
+macos-latest
+```
+
+Artifact LAB 04:
+
+```text
+target/lab01-4.0.0.jar
+```
+
+Фінальні URL для:
+
+```text
+Pull Request
+GitHub Actions
+JAR artifact
+Release v4.0.0
+```
+
+будуть додані після завершення merge та створення фінального Git-тега.
+
+---
+
+## Поточний стан LAB 04
+
+Реалізовано:
+
+- версію `4.0.0`;
+- `VetVisitQueries`;
+- filter;
+- map;
+- groupingBy;
+- summarizingDouble;
+- складений comparator;
+- sorted + limit;
+- Optional;
+- Stream API у `VetClinicController`;
+- regression cycle → Stream API;
+- 50 JUnit 5 тестів;
+- перевірку порожнього входу;
+- перевірку дубльованого ключа;
+- перевірку tie-breaker;
+- перевірку граничного N;
+- перевірку відсутності мутації;
+- SpotBugs без дефектів;
+- Javadoc без warnings;
+- executable JAR `4.0.0`;
+- CI artifact path `lab01-4.0.0.jar`.
+
+Фінальний стан LAB 04 буде зафіксований тегом:
+
+```text
+v4.0.0
+```
