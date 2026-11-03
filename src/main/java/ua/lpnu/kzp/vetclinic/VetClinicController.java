@@ -14,6 +14,12 @@ import java.util.Locale;
 public final class VetClinicController {
 
     /**
+     * Створює контролер обробки даних ветеринарної клініки.
+     */
+    public VetClinicController() {
+    }
+    
+    /**
      * Виконує повний цикл обробки вхідного файла.
      *
      * @param arguments параметри запуску
@@ -70,28 +76,37 @@ public final class VetClinicController {
     }
 
     /**
-     * Обчислює підсумок коректних візитів через поліморфний метод finalCost().
+     * Обчислює підсумок коректних візитів через Stream API.
+     *
+     * <p>Загальна вартість обчислюється поліморфно через
+     * {@link VetVisit#finalCost()}, а кількість термінових
+     * візитів визначається через {@code filter}.
      *
      * @param visits список візитів спільного типу
      * @return загальна вартість і кількість термінових візитів
      */
     static PriceUrgency calculateSummary(List<VetVisit> visits) {
-        double totalPrice = 0.0;
-        int urgentCount = 0;
+        double totalPrice = visits.stream()
+                .mapToDouble(VetVisit::finalCost)
+                .sum();
 
-        for (VetVisit visit : visits) {
-            totalPrice += visit.finalCost();
-
-            if (visit.isUrgent()) {
-                urgentCount++;
-            }
-        }
+        int urgentCount = Math.toIntExact(
+                visits.stream()
+                        .filter(VetVisit::isUrgent)
+                        .count());
 
         return new PriceUrgency(
                 totalPrice,
                 urgentCount);
     }
 
+    /**
+     * Записує сформований звіт у файл.
+     *
+     * @param outputPath шлях до вихідного файла
+     * @param report текст звіту
+     * @throws IOException якщо запис файла неможливий
+     */
     private static void writeReport(
             Path outputPath,
             String report) throws IOException {
@@ -108,6 +123,16 @@ public final class VetClinicController {
                 StandardCharsets.UTF_8);
     }
 
+    /**
+     * Формує текстовий звіт.
+     *
+     * @param validCount кількість коректних записів
+     * @param averagePrice середня вартість
+     * @param totalRevenue загальний виторг
+     * @param urgentVisits кількість термінових візитів
+     * @param errors список помилок
+     * @return сформований текст звіту
+     */
     private static String buildReport(
             int validCount,
             double averagePrice,
