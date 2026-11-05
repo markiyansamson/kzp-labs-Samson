@@ -1,34 +1,42 @@
 package ua.lpnu.kzp.vetclinic;
 
+import java.time.LocalDate;
+
 /**
  * Звичайний плановий візит до ветеринарної клініки.
  */
 public final class RoutineVisit extends VetVisit {
 
     /**
-     * Створює звичайний візит.
+     * Створює плановий візит.
      *
      * @param animal кличка або назва тварини
      * @param species вид тварини
-     * @param visitType тип візиту
-     * @param price базова вартість
+     * @param owner власник тварини
+     * @param date дата візиту
+     * @param diagnosis діагноз
+     * @param price базова вартість візиту
      */
     public RoutineVisit(
             String animal,
             String species,
-            String visitType,
+            String owner,
+            LocalDate date,
+            String diagnosis,
             double price) {
 
         super(
                 animal,
                 species,
-                visitType,
+                owner,
+                date,
+                diagnosis,
                 price,
                 VisitKind.ROUTINE);
     }
 
     /**
-     * Для звичайного візиту підсумкова вартість
+     * Для планового візиту підсумкова вартість
      * дорівнює базовій вартості.
      *
      * @return підсумкова вартість

@@ -11,10 +11,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Містить чисті Stream API запити до колекції ветеринарних візитів.
+ * Містить чисті Stream API запити до колекції
+ * ветеринарних візитів.
  *
- * <p>Методи не змінюють вхідну колекцію та для кожного незалежного
- * запиту створюють новий потік.
+ * <p>Варіант №21:
+ * filter — вартість понад поріг;
+ * map — види тварин;
+ * groupingBy — кількість за видом;
+ * statistics — вартість;
+ * top-N — вартість за спаданням і дата за зростанням;
+ * Optional — пошук за власником.
  */
 public final class VetVisitQueries {
 
@@ -25,31 +31,37 @@ public final class VetVisitQueries {
     }
 
     /**
-     * Повертає візити, базова вартість яких строго перевищує заданий поріг.
+     * Повертає візити, базова вартість яких
+     * строго перевищує заданий поріг.
      *
-     * @param visits вхідна колекція візитів
+     * @param visits список візитів
      * @param threshold поріг вартості
-     * @return візити з ціною, більшою за поріг
+     * @return візити з ціною більшою за поріг
      * @throws IllegalArgumentException якщо поріг некоректний
      */
     public static List<VetVisit> visitsAbovePrice(
             List<VetVisit> visits,
             double threshold) {
 
-        if (threshold < 0 || !Double.isFinite(threshold)) {
+        if (threshold < 0
+                || !Double.isFinite(threshold)) {
             throw new IllegalArgumentException(
-                    "Поріг вартості має бути скінченним невід'ємним числом");
+                    "Поріг вартості має бути "
+                            + "скінченним невід'ємним числом");
         }
 
         return streamOf(visits)
-                .filter(visit -> visit.getPrice() > threshold)
+                .filter(
+                        visit ->
+                                visit.getPrice()
+                                        > threshold)
                 .toList();
     }
 
     /**
-     * Повертає види тварин для всіх візитів у початковому порядку.
+     * Повертає види тварин у початковому порядку.
      *
-     * @param visits вхідна колекція візитів
+     * @param visits список візитів
      * @return список видів тварин
      */
     public static List<String> species(
@@ -61,11 +73,10 @@ public final class VetVisitQueries {
     }
 
     /**
-     * Групує візити за видом тварини та підраховує кількість у кожній групі.
+     * Групує візити за видом тварини
+     * та підраховує кількість записів.
      *
-     * <p>Для стабільного порядку ключів використовується {@link TreeMap}.
-     *
-     * @param visits вхідна колекція візитів
+     * @param visits список візитів
      * @return карта вид тварини -> кількість візитів
      */
     public static Map<String, Long> countBySpecies(
@@ -79,26 +90,32 @@ public final class VetVisitQueries {
     }
 
     /**
-     * Обчислює зведену статистику базової вартості візитів.
+     * Обчислює зведену статистику
+     * базової вартості візитів.
      *
-     * @param visits вхідна колекція візитів
-     * @return статистика count, sum, min, max та average
+     * @param visits список візитів
+     * @return статистика вартості
      */
     public static DoubleSummaryStatistics priceStatistics(
             List<VetVisit> visits) {
 
         return streamOf(visits)
-                .collect(Collectors.summarizingDouble(
-                        VetVisit::getPrice));
+                .collect(
+                        Collectors.summarizingDouble(
+                                VetVisit::getPrice));
     }
 
     /**
-     * Повертає перші N візитів після складеного впорядкування.
+     * Повертає перші N візитів після
+     * складеного впорядкування.
      *
-     * <p>Основний критерій — вартість за спаданням.
-     * Другий критерій — назва тварини за зростанням.
+     * <p>Основний критерій:
+     * вартість за спаданням.
      *
-     * @param visits вхідна колекція візитів
+     * <p>Другий критерій:
+     * дата за зростанням.
+     *
+     * @param visits список візитів
      * @param limit максимальна кількість результатів
      * @return впорядкований top-N
      * @throws IllegalArgumentException якщо limit від'ємний
@@ -112,52 +129,65 @@ public final class VetVisitQueries {
                     "Ліміт не може бути від'ємним");
         }
 
-        Comparator<VetVisit> byPriceAndAnimal =
-                Comparator.comparingDouble(VetVisit::getPrice)
+        Comparator<VetVisit> byPriceAndDate =
+                Comparator.comparingDouble(
+                                VetVisit::getPrice)
                         .reversed()
-                        .thenComparing(VetVisit::getAnimal);
+                        .thenComparing(
+                                VetVisit::getDate);
 
         return streamOf(visits)
-                .sorted(byPriceAndAnimal)
+                .sorted(byPriceAndDate)
                 .limit(limit)
                 .toList();
     }
 
     /**
-     * Шукає перший візит тварини із заданим ім'ям.
+     * Шукає перший візит за ім'ям власника.
      *
-     * <p>Якщо ім'я дублюється, повертається перший запис
-     * у початковому порядку колекції.
+     * <p>Якщо один власник має кілька візитів,
+     * повертається перший запис у початковому
+     * порядку колекції.
      *
-     * @param visits вхідна колекція візитів
-     * @param animal назва або кличка тварини
-     * @return знайдений візит або {@link Optional#empty()}
+     * @param visits список візитів
+     * @param owner власник тварини
+     * @return знайдений візит або Optional.empty()
      */
-    public static Optional<VetVisit> findByAnimal(
+    public static Optional<VetVisit> findByOwner(
             List<VetVisit> visits,
-            String animal) {
+            String owner) {
 
         Objects.requireNonNull(
-                animal,
-                "Назва тварини не може бути null");
+                owner,
+                "Власник не може бути null");
+
+        String normalizedOwner = owner.trim();
+
+        if (normalizedOwner.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Власник не може бути порожнім");
+        }
 
         return streamOf(visits)
-                .filter(visit -> visit.getAnimal().equals(animal))
+                .filter(
+                        visit ->
+                                visit.getOwner()
+                                        .equals(normalizedOwner))
                 .findFirst();
     }
 
     /**
-     * Перевіряє вхідну колекцію та створює новий потік.
+     * Перевіряє список і створює новий Stream.
      *
-     * @param visits колекція візитів
+     * @param visits список візитів
      * @return потік елементів
      */
     private static Stream<VetVisit> streamOf(
             List<VetVisit> visits) {
 
         return Objects.requireNonNull(
-                visits,
-                "Список візитів не може бути null")
+                        visits,
+                        "Список візитів не може бути null")
                 .stream();
     }
 }

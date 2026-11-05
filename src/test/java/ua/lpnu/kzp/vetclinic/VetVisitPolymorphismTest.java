@@ -2,123 +2,90 @@ package ua.lpnu.kzp.vetclinic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class VetVisitPolymorphismTest {
 
     @Test
-    void routineVisitKeepsBasePrice() {
-        VetVisit visit = new RoutineVisit(
-                "Мурка",
-                "кіт",
-                "огляд",
-                500.0);
-
-        assertEquals(
-                500.0,
-                visit.finalCost(),
-                0.001);
-
-        assertEquals(
-                VisitKind.ROUTINE,
-                visit.getKind());
-    }
-
-    @Test
-    void urgentVisitUsesMinimumUrgentCost() {
-        VetVisit visit = new UrgentVisit(
-                "Рекс",
-                "собака",
-                "невідкладна допомога",
-                800.0);
-
-        assertEquals(
-                1000.0,
-                visit.finalCost(),
-                0.001);
-
-        assertEquals(
-                VisitKind.URGENT,
-                visit.getKind());
-    }
-
-    @Test
-    void urgentVisitKeepsHigherBasePrice() {
-        VetVisit visit = new UrgentVisit(
-                "Рекс",
-                "собака",
-                "невідкладна допомога",
-                1200.0);
-
-        assertEquals(
-                1200.0,
-                visit.finalCost(),
-                0.001);
-    }
-
-    @Test
-    void subtypesHaveDifferentPolymorphicBehavior() {
-        VetVisit routine = new RoutineVisit(
-                "Мурка",
-                "кіт",
-                "огляд",
-                800.0);
-
-        VetVisit urgent = new UrgentVisit(
-                "Рекс",
-                "собака",
-                "невідкладна допомога",
-                800.0);
-
-        assertEquals(
-                800.0,
-                routine.finalCost(),
-                0.001);
-
-        assertEquals(
-                1000.0,
-                urgent.finalCost(),
-                0.001);
-
-        assertNotEquals(
-                routine.finalCost(),
-                urgent.finalCost());
-    }
-
-    @Test
-    void polymorphicCollectionProcessesDifferentSubtypes() {
+    void storesDifferentSubtypesThroughBaseType() {
         List<VetVisit> visits = List.of(
                 new RoutineVisit(
                         "Мурка",
                         "кіт",
+                        "Іван Петренко",
+                        LocalDate.of(2026, 10, 1),
                         "огляд",
-                        500.0),
+                        350.0),
                 new UrgentVisit(
                         "Рекс",
                         "собака",
-                        "невідкладна допомога",
-                        800.0));
+                        "Олена Коваль",
+                        LocalDate.of(2026, 10, 5),
+                        "травма лапи",
+                        1200.0));
 
-        double totalFinalCost = visits.stream()
-                .mapToDouble(VetVisit::finalCost)
-                .sum();
+        assertInstanceOf(
+                RoutineVisit.class,
+                visits.get(0));
 
-        assertEquals(
-                1500.0,
-                totalFinalCost,
-                0.001);
+        assertInstanceOf(
+                UrgentVisit.class,
+                visits.get(1));
     }
 
     @Test
-    void csvFactoryCreatesBothConcreteSubtypes() {
-        VetVisit routine = VetVisit.fromCsv(
-                "Мурка;кіт;огляд;350.00;false");
+    void finalCostIsDispatchedPolymorphically() {
+        List<VetVisit> visits = List.of(
+                new RoutineVisit(
+                        "Мурка",
+                        "кіт",
+                        "Іван Петренко",
+                        LocalDate.of(2026, 10, 1),
+                        "огляд",
+                        350.0),
+                new UrgentVisit(
+                        "Бім",
+                        "собака",
+                        "Марія Бондар",
+                        LocalDate.of(2026, 10, 2),
+                        "гострий біль",
+                        600.0),
+                new UrgentVisit(
+                        "Рекс",
+                        "собака",
+                        "Олена Коваль",
+                        LocalDate.of(2026, 10, 5),
+                        "травма лапи",
+                        1200.0));
 
-        VetVisit urgent = VetVisit.fromCsv(
-                "Рекс;собака;невідкладна допомога;1200.00;true");
+        assertEquals(
+                List.of(
+                        350.0,
+                        1000.0,
+                        1200.0),
+                visits.stream()
+                        .map(VetVisit::finalCost)
+                        .toList());
+    }
+
+    @Test
+    void factoryCreatesCorrectSubtype() {
+        VetVisit routine =
+                VetVisit.fromCsv(
+                        "Мурка;кіт;Іван Петренко;"
+                                + "2026-10-01;"
+                                + "огляд;"
+                                + "350.00;false");
+
+        VetVisit urgent =
+                VetVisit.fromCsv(
+                        "Рекс;собака;Олена Коваль;"
+                                + "2026-10-05;"
+                                + "травма лапи;"
+                                + "1200.00;true");
 
         assertInstanceOf(
                 RoutineVisit.class,
@@ -127,13 +94,37 @@ class VetVisitPolymorphismTest {
         assertInstanceOf(
                 UrgentVisit.class,
                 urgent);
+    }
+
+    @Test
+    void controllerSummaryUsesPolymorphicFinalCost() {
+        List<VetVisit> visits = List.of(
+                new RoutineVisit(
+                        "Мурка",
+                        "кіт",
+                        "Іван Петренко",
+                        LocalDate.of(2026, 10, 1),
+                        "огляд",
+                        350.0),
+                new UrgentVisit(
+                        "Бім",
+                        "собака",
+                        "Марія Бондар",
+                        LocalDate.of(2026, 10, 2),
+                        "гострий біль",
+                        600.0));
+
+        PriceUrgency result =
+                VetClinicController.calculateSummary(
+                        visits);
 
         assertEquals(
-                VisitKind.ROUTINE,
-                routine.getKind());
+                1350.0,
+                result.totalPrice(),
+                0.001);
 
         assertEquals(
-                VisitKind.URGENT,
-                urgent.getKind());
+                1,
+                result.urgentCount());
     }
 }
