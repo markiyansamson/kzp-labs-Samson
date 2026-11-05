@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.LocalDate;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Map;
@@ -16,32 +17,49 @@ class VetVisitQueriesTest {
             new RoutineVisit(
                     "Мурка",
                     "кіт",
-                    "огляд",
+                    "Іван Петренко",
+                    LocalDate.of(2026, 10, 1),
+                    "профілактичний огляд",
                     350.0),
+
             new RoutineVisit(
                     "Бім",
                     "собака",
+                    "Олена Коваль",
+                    LocalDate.of(2026, 10, 2),
                     "вакцинація",
                     500.0),
+
             new UrgentVisit(
                     "Рекс",
                     "собака",
-                    "невідкладна допомога",
+                    "Андрій Мельник",
+                    LocalDate.of(2026, 10, 5),
+                    "травма лапи",
                     1200.0),
+
             new RoutineVisit(
                     "Альфа",
                     "кінь",
+                    "Марія Бондар",
+                    LocalDate.of(2026, 10, 3),
                     "огляд",
                     1200.0),
+
             new RoutineVisit(
                     "Луна",
                     "кіт",
+                    "Ірина Савчук",
+                    LocalDate.of(2026, 10, 4),
                     "аналізи",
                     700.0),
+
             new RoutineVisit(
-                    "Рекс",
+                    "Барсик",
                     "кіт",
-                    "контроль",
+                    "Іван Петренко",
+                    LocalDate.of(2026, 10, 6),
+                    "контрольний огляд",
                     450.0));
 
     @Test
@@ -129,9 +147,18 @@ class VetVisitQueriesTest {
                 VetVisitQueries.priceStatistics(visits);
 
         assertEquals(6, statistics.getCount());
-        assertEquals(4400.0, statistics.getSum(), 0.001);
-        assertEquals(350.0, statistics.getMin(), 0.001);
-        assertEquals(1200.0, statistics.getMax(), 0.001);
+        assertEquals(
+                4400.0,
+                statistics.getSum(),
+                0.001);
+        assertEquals(
+                350.0,
+                statistics.getMin(),
+                0.001);
+        assertEquals(
+                1200.0,
+                statistics.getMax(),
+                0.001);
         assertEquals(
                 733.333333,
                 statistics.getAverage(),
@@ -139,7 +166,7 @@ class VetVisitQueriesTest {
     }
 
     @Test
-    void returnsTopFiveByPriceAndAnimal() {
+    void returnsTopFiveByPriceAndDate() {
         List<VetVisit> result =
                 VetVisitQueries.topByPrice(
                         visits,
@@ -153,7 +180,7 @@ class VetVisitQueriesTest {
                         "Рекс",
                         "Луна",
                         "Бім",
-                        "Рекс"),
+                        "Барсик"),
                 result.stream()
                         .map(VetVisit::getAnimal)
                         .toList());
@@ -168,6 +195,30 @@ class VetVisitQueriesTest {
                 result.stream()
                         .map(VetVisit::getPrice)
                         .toList());
+    }
+
+    @Test
+    void usesDateAsSecondComparatorCriterion() {
+        List<VetVisit> result =
+                VetVisitQueries.topByPrice(
+                        visits,
+                        2);
+
+        assertEquals(
+                "Альфа",
+                result.get(0).getAnimal());
+
+        assertEquals(
+                LocalDate.of(2026, 10, 3),
+                result.get(0).getDate());
+
+        assertEquals(
+                "Рекс",
+                result.get(1).getAnimal());
+
+        assertEquals(
+                LocalDate.of(2026, 10, 5),
+                result.get(1).getDate());
     }
 
     @Test
@@ -193,30 +244,36 @@ class VetVisitQueriesTest {
     }
 
     @Test
-    void findsFirstVisitByAnimal() {
+    void findsFirstVisitByOwner() {
         Optional<VetVisit> result =
-                VetVisitQueries.findByAnimal(
+                VetVisitQueries.findByOwner(
                         visits,
-                        "Рекс");
+                        "Іван Петренко");
 
         assertTrue(result.isPresent());
 
-        assertEquals(
-                "невідкладна допомога",
-                result.orElseThrow().getVisitType());
+        VetVisit visit =
+                result.orElseThrow();
 
         assertEquals(
-                1200.0,
-                result.orElseThrow().getPrice(),
-                0.001);
+                "Мурка",
+                visit.getAnimal());
+
+        assertEquals(
+                "профілактичний огляд",
+                visit.getDiagnosis());
+
+        assertEquals(
+                LocalDate.of(2026, 10, 1),
+                visit.getDate());
     }
 
     @Test
-    void returnsEmptyOptionalForMissingAnimal() {
+    void returnsEmptyOptionalForMissingOwner() {
         Optional<VetVisit> result =
-                VetVisitQueries.findByAnimal(
+                VetVisitQueries.findByOwner(
                         visits,
-                        "Барсик");
+                        "Власник якого немає");
 
         assertTrue(result.isEmpty());
     }
@@ -242,8 +299,14 @@ class VetVisitQueriesTest {
         DoubleSummaryStatistics statistics =
                 VetVisitQueries.priceStatistics(empty);
 
-        assertEquals(0, statistics.getCount());
-        assertEquals(0.0, statistics.getSum(), 0.001);
+        assertEquals(
+                0,
+                statistics.getCount());
+
+        assertEquals(
+                0.0,
+                statistics.getSum(),
+                0.001);
 
         assertTrue(
                 VetVisitQueries.topByPrice(
@@ -252,9 +315,9 @@ class VetVisitQueriesTest {
                         .isEmpty());
 
         assertTrue(
-                VetVisitQueries.findByAnimal(
+                VetVisitQueries.findByOwner(
                         empty,
-                        "Рекс")
+                        "Іван Петренко")
                         .isEmpty());
     }
 
@@ -277,10 +340,12 @@ class VetVisitQueriesTest {
                 visits,
                 5);
 
-        VetVisitQueries.findByAnimal(
+        VetVisitQueries.findByOwner(
                 visits,
-                "Рекс");
+                "Іван Петренко");
 
-        assertEquals(before, visits);
+        assertEquals(
+                before,
+                visits);
     }
 }

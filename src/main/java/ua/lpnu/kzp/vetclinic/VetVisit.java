@@ -1,17 +1,24 @@
 package ua.lpnu.kzp.vetclinic;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Locale;
 import java.util.Objects;
 
 /**
  * Спільний базовий тип візитів до ветеринарної клініки.
+ *
+ * <p>Варіант №21: тварина, вид, власник, дата,
+ * діагноз і вартість.
  */
 public abstract class VetVisit {
 
     private final String animal;
     private final String species;
-    private final String visitType;
+    private final String owner;
+    private final LocalDate date;
+    private final String diagnosis;
     private final double price;
     private final VisitKind kind;
 
@@ -20,23 +27,33 @@ public abstract class VetVisit {
      *
      * @param animal кличка або назва тварини
      * @param species вид тварини
-     * @param visitType тип візиту
+     * @param owner власник тварини
+     * @param date дата візиту
+     * @param diagnosis діагноз
      * @param price базова вартість візиту
      * @param kind категорія візиту
      */
     @SuppressFBWarnings(
             value = "CT_CONSTRUCTOR_THROW",
-            justification = "Конструктор навмисно відхиляє некоректний предметний стан")
+            justification = "Constructor validates immutable domain data")
     protected VetVisit(
             String animal,
             String species,
-            String visitType,
+            String owner,
+            LocalDate date,
+            String diagnosis,
             double price,
             VisitKind kind) {
 
         this.animal = requireText(animal, "animal");
         this.species = requireText(species, "species");
-        this.visitType = requireText(visitType, "visitType");
+        this.owner = requireText(owner, "owner");
+        this.date = Objects.requireNonNull(
+                date,
+                "поле date не може бути null");
+        this.diagnosis = requireText(
+                diagnosis,
+                "diagnosis");
 
         if (price < 0 || !Double.isFinite(price)) {
             throw new IllegalArgumentException(
@@ -44,15 +61,16 @@ public abstract class VetVisit {
         }
 
         this.price = price;
+
         this.kind = Objects.requireNonNull(
                 kind,
                 "kind не може бути null");
     }
 
     /**
-     * Повертає назву або кличку тварини.
+     * Повертає кличку або назву тварини.
      *
-     * @return назва або кличка тварини
+     * @return тварина
      */
     public final String getAnimal() {
         return animal;
@@ -68,12 +86,30 @@ public abstract class VetVisit {
     }
 
     /**
-     * Повертає тип візиту.
+     * Повертає власника тварини.
      *
-     * @return тип візиту
+     * @return власник
      */
-    public final String getVisitType() {
-        return visitType;
+    public final String getOwner() {
+        return owner;
+    }
+
+    /**
+     * Повертає дату візиту.
+     *
+     * @return дата візиту
+     */
+    public final LocalDate getDate() {
+        return date;
+    }
+
+    /**
+     * Повертає діагноз.
+     *
+     * @return діагноз
+     */
+    public final String getDiagnosis() {
+        return diagnosis;
     }
 
     /**
@@ -104,18 +140,23 @@ public abstract class VetVisit {
     }
 
     /**
-     * Обчислює підсумкову вартість відповідно до конкретного підтипу.
+     * Обчислює підсумкову вартість відповідно
+     * до конкретного підтипу.
      *
      * @return підсумкова вартість
      */
     public abstract double finalCost();
 
     /**
-     * Створює конкретний підтип візиту з одного CSV-рядка.
+     * Створює конкретний підтип візиту з CSV-рядка.
      *
-     * @param line рядок у форматі animal;species;visitType;price;urgent
-     * @return RoutineVisit або UrgentVisit через спільний тип VetVisit
-     * @throws IllegalArgumentException якщо структура або значення некоректні
+     * <p>Формат:
+     * animal;species;owner;date;diagnosis;price;urgent
+     *
+     * @param line CSV-рядок
+     * @return створений конкретний підтип VetVisit
+     * @throws IllegalArgumentException якщо структура
+     *                                  або значення некоректні
      */
     public static VetVisit fromCsv(String line) {
         Objects.requireNonNull(
@@ -124,24 +165,35 @@ public abstract class VetVisit {
 
         String[] fields = line.split(";", -1);
 
-        if (fields.length != 5) {
+        if (fields.length != 7) {
             throw new IllegalArgumentException(
-                    "очікується 5 полів, отримано "
+                    "очікується 7 полів, отримано "
                             + fields.length);
+        }
+
+        LocalDate date;
+
+        try {
+            date = LocalDate.parse(
+                    fields[3].trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(
+                    "поле date має бути датою у форматі yyyy-MM-dd",
+                    exception);
         }
 
         double price;
 
         try {
             price = Double.parseDouble(
-                    fields[3].trim());
+                    fields[5].trim());
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(
                     "поле price має бути числом",
                     exception);
         }
 
-        String urgentText = fields[4].trim();
+        String urgentText = fields[6].trim();
 
         if (!urgentText.equalsIgnoreCase("true")
                 && !urgentText.equalsIgnoreCase("false")) {
@@ -149,13 +201,16 @@ public abstract class VetVisit {
                     "поле urgent має бути true або false");
         }
 
-        boolean urgent = Boolean.parseBoolean(urgentText);
+        boolean urgent =
+                Boolean.parseBoolean(urgentText);
 
         if (urgent) {
             return new UrgentVisit(
                     fields[0],
                     fields[1],
                     fields[2],
+                    date,
+                    fields[4],
                     price);
         }
 
@@ -163,11 +218,14 @@ public abstract class VetVisit {
                 fields[0],
                 fields[1],
                 fields[2],
+                date,
+                fields[4],
                 price);
     }
 
     /**
-     * Порівнює візити за конкретним підтипом і спільними даними.
+     * Порівнює візити за конкретним підтипом
+     * та всіма предметними даними.
      *
      * @param other інший об'єкт
      * @return true, якщо об'єкти логічно рівні
@@ -178,22 +236,27 @@ public abstract class VetVisit {
             return true;
         }
 
-        if (other == null || getClass() != other.getClass()) {
+        if (other == null
+                || getClass() != other.getClass()) {
             return false;
         }
 
         VetVisit visit = (VetVisit) other;
 
-        return Double.compare(price, visit.price) == 0
+        return Double.compare(
+                price,
+                visit.price) == 0
                 && animal.equals(visit.animal)
                 && species.equals(visit.species)
-                && visitType.equals(visit.visitType);
+                && owner.equals(visit.owner)
+                && date.equals(visit.date)
+                && diagnosis.equals(visit.diagnosis);
     }
 
     /**
      * Повертає хеш-код, узгоджений із equals.
      *
-     * @return хеш-код візиту
+     * @return хеш-код
      */
     @Override
     public final int hashCode() {
@@ -201,23 +264,27 @@ public abstract class VetVisit {
                 getClass(),
                 animal,
                 species,
-                visitType,
+                owner,
+                date,
+                diagnosis,
                 price);
     }
 
     /**
-     * Повертає текстове представлення візиту.
+     * Повертає стабільне текстове представлення візиту.
      *
-     * @return відформатований опис візиту
+     * @return опис візиту
      */
     @Override
     public final String toString() {
         return String.format(
                 Locale.ROOT,
-                "%s; %s; %s; %.2f; urgent=%s",
+                "%s; %s; %s; %s; %s; %.2f; urgent=%s",
                 animal,
                 species,
-                visitType,
+                owner,
+                date,
+                diagnosis,
                 price,
                 isUrgent());
     }
@@ -225,9 +292,9 @@ public abstract class VetVisit {
     /**
      * Перевіряє текстове поле.
      *
-     * @param value значення поля
+     * @param value значення
      * @param fieldName назва поля
-     * @return очищене текстове значення
+     * @return очищене значення
      */
     private static String requireText(
             String value,
@@ -235,7 +302,8 @@ public abstract class VetVisit {
 
         Objects.requireNonNull(
                 value,
-                "поле " + fieldName + " не може бути null");
+                "поле " + fieldName
+                        + " не може бути null");
 
         String trimmed = value.trim();
 

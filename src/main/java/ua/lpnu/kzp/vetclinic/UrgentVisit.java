@@ -1,5 +1,7 @@
 package ua.lpnu.kzp.vetclinic;
 
+import java.time.LocalDate;
+
 /**
  * Терміновий візит до ветеринарної клініки.
  */
@@ -12,26 +14,34 @@ public final class UrgentVisit extends VetVisit {
      *
      * @param animal кличка або назва тварини
      * @param species вид тварини
-     * @param visitType тип візиту
-     * @param price базова вартість
+     * @param owner власник тварини
+     * @param date дата візиту
+     * @param diagnosis діагноз
+     * @param price базова вартість візиту
      */
     public UrgentVisit(
             String animal,
             String species,
-            String visitType,
+            String owner,
+            LocalDate date,
+            String diagnosis,
             double price) {
 
         super(
                 animal,
                 species,
-                visitType,
+                owner,
+                date,
+                diagnosis,
                 price,
                 VisitKind.URGENT);
     }
 
     /**
-     * Повертає підсумкову вартість термінового візиту.
-     * Для термінового візиту діє мінімальна вартість 1000 грн.
+     * Обчислює вартість термінового візиту.
+     *
+     * <p>Мінімальна вартість термінового візиту —
+     * 1000.00.
      *
      * @return підсумкова вартість
      */
