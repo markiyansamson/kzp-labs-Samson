@@ -36,16 +36,34 @@ jobs:
 
       - name: Verify on Unix
         if: runner.os != 'Windows'
-        run: ./mvnw -B verify
+        run: >
+          ./mvnw -B
+          -Dbuild.number=${{ github.run_number }}
+          verify
 
       - name: Verify on Windows
         if: runner.os == 'Windows'
-        run: .\mvnw.cmd -B verify
+        run: >
+          .\mvnw.cmd -B
+          "-Dbuild.number=${{ github.run_number }}"
+          verify
+
+      - name: Show application version on Unix
+        if: runner.os != 'Windows'
+        run: >
+          java -jar target/lab01-4.0.0.jar
+          --version
+
+      - name: Show application version on Windows
+        if: runner.os == 'Windows'
+        run: >
+          java -jar target/lab01-4.0.0.jar
+          --version
 
       - name: Upload JAR
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: jar-${{ matrix.os }}-${{ github.run_number }}
+          name: jar-${{ matrix.os }}-build-${{ github.run_number }}
           path: target/lab01-4.0.0.jar
           if-no-files-found: error
