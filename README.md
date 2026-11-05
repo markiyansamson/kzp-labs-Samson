@@ -1,4 +1,4 @@
-# Кросплатформні засоби програмування
+﻿# Кросплатформні засоби програмування
 
 ## Лабораторна робота №1
 
@@ -1354,7 +1354,22 @@ RoutineVisit
 UrgentVisit
 ```
 
-Щоб не ламати CSV-формат і модель попередніх лабораторних робіт, LAB 04 використовує саме ці поля.
+Після перевірки LAB 04 модель `VetVisit` приведено у повну відповідність до варіанта №21.
+
+Предметна модель тепер містить:
+
+- `animal` — тварина;
+- `species` — вид;
+- `owner` — власник;
+- `date` — дата візиту типу `LocalDate`;
+- `diagnosis` — діагноз;
+- `price` — вартість;
+- `kind` — категорія візиту.
+
+CSV-формат:
+
+```text
+animal;species;owner;date;diagnosis;price;urgent
 
 Потокові запити реалізовано так:
 
@@ -1364,7 +1379,7 @@ map          → species
 groupingBy   → кількість за species
 statistics   → price
 top-N        → price ↓, animal ↑
-Optional     → пошук за animal
+Optional     → пошук за owner
 ```
 
 Ця адаптація зберігає наскрізну модель LAB 03 та дозволяє перевірити всі обов’язкові Stream API операції.
@@ -1567,7 +1582,7 @@ price — за спаданням
 Другий критерій:
 
 ```text
-animal — за зростанням
+date — за зростанням
 ```
 
 Comparator:
@@ -1641,7 +1656,7 @@ N > size → усі доступні записи
 Метод:
 
 ```java
-findByAnimal(
+findByOwner(
         List<VetVisit> visits,
         String animal)
 ```
@@ -1808,7 +1823,7 @@ LAB 03 output == LAB 04 regression output
 Після додавання Stream API:
 
 ```text
-50 JUnit 5 тестів
+61 JUnit 5 тестів
 ```
 
 Нові тести перевіряють:
@@ -1978,7 +1993,7 @@ Release v4.0.0
 - Optional;
 - Stream API у `VetClinicController`;
 - regression cycle → Stream API;
-- 50 JUnit 5 тестів;
+- 61 JUnit 5 тестів;
 - перевірку порожнього входу;
 - перевірку дубльованого ключа;
 - перевірку tie-breaker;
