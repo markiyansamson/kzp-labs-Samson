@@ -51,13 +51,13 @@ jobs:
       - name: Show application version on Unix
         if: runner.os != 'Windows'
         run: >
-          java -jar target/lab01-4.0.0.jar
+          java -jar target/lab01-5.0.0.jar
           --version
 
       - name: Show application version on Windows
         if: runner.os == 'Windows'
         run: >
-          java -jar target/lab01-4.0.0.jar
+          java -jar target/lab01-5.0.0.jar
           --version
 
       - name: Upload JAR
@@ -65,5 +65,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jar-${{ matrix.os }}-build-${{ github.run_number }}
-          path: target/lab01-4.0.0.jar
+          path: target/lab01-5.0.0.jar
           if-no-files-found: error
