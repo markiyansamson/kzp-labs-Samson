@@ -63,6 +63,26 @@ public final class VetVisitRecord {
     }
 
     /**
+     * Створює плоский CSV-запис із предметного VetVisit.
+     *
+     * @param visit предметний візит
+     * @return CSV-запис
+     */
+    public static VetVisitRecord fromVisit(VetVisit visit) {
+        Objects.requireNonNull(
+                visit,
+                "visit не може бути null");
+
+        return new VetVisitRecord(
+                visit.getAnimal(),
+                visit.getSpecies(),
+                visit.getOwner(),
+                visit.getDate(),
+                visit.getDiagnosis(),
+                visit.getPrice());
+    }
+
+    /**
      * Створює запис з одного CSV-рядка.
      *
      * @param line CSV-рядок
@@ -125,61 +145,34 @@ public final class VetVisitRecord {
         }
     }
 
-    /**
-     * Повертає тварину.
-     *
-     * @return тварина
-     */
     public String getAnimal() {
         return animal;
     }
 
-    /**
-     * Повертає вид.
-     *
-     * @return вид тварини
-     */
     public String getSpecies() {
         return species;
     }
 
-    /**
-     * Повертає власника.
-     *
-     * @return власник
-     */
     public String getOwner() {
         return owner;
     }
 
-    /**
-     * Повертає дату візиту.
-     *
-     * @return дата
-     */
     public LocalDate getDate() {
         return date;
     }
 
-    /**
-     * Повертає діагноз.
-     *
-     * @return діагноз
-     */
     public String getDiagnosis() {
         return diagnosis;
     }
 
-    /**
-     * Повертає вартість.
-     *
-     * @return вартість
-     */
     public double getCost() {
         return cost;
     }
 
-    private static String requireText(String value, String fieldName) {
+    private static String requireText(
+            String value,
+            String fieldName) {
+
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(
                     fieldName + " не може бути порожнім");
@@ -188,12 +181,6 @@ public final class VetVisitRecord {
         return value.trim();
     }
 
-    /**
-     * Порівнює записи за всіма полями.
-     *
-     * @param other інший об'єкт
-     * @return {@code true}, якщо всі поля однакові
-     */
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -212,11 +199,6 @@ public final class VetVisitRecord {
                 && diagnosis.equals(visit.diagnosis);
     }
 
-    /**
-     * Повертає хеш-код запису.
-     *
-     * @return хеш-код
-     */
     @Override
     public int hashCode() {
         return Objects.hash(

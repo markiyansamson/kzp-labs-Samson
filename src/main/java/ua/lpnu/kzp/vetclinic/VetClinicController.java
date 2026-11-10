@@ -13,25 +13,26 @@ import java.util.Locale;
  */
 public final class VetClinicController {
 
-    /**
-     * Створює контролер обробки даних ветеринарної клініки.
-     */
     public VetClinicController() {
     }
-    
+
     /**
      * Виконує повний цикл обробки вхідного файла.
      *
      * @param arguments параметри запуску
      * @return сформований звіт
-     * @throws IOException якщо виникла помилка читання або запису файла
+     * @throws IOException якщо виникла помилка роботи з файлами
      */
-    public String run(AppArguments arguments) throws IOException {
+    public String run(AppArguments arguments)
+            throws IOException {
+
         List<String> lines = Files.readAllLines(
                 arguments.inputPath(),
                 StandardCharsets.UTF_8);
 
-        List<VetVisit> visits = new ArrayList<>();
+        Repository<VetVisit> visitRepository =
+                new Repository<>();
+
         List<String> errors = new ArrayList<>();
 
         for (int index = 0; index < lines.size(); index++) {
@@ -46,7 +47,8 @@ public final class VetClinicController {
             }
 
             try {
-                visits.add(VetVisit.fromCsv(line));
+                visitRepository.add(
+                        VetVisit.fromCsv(line));
             } catch (IllegalArgumentException exception) {
                 errors.add(
                         "Рядок " + lineNumber + ": "
@@ -54,7 +56,15 @@ public final class VetClinicController {
             }
         }
 
-        PriceUrgency summary = calculateSummary(visits);
+        List<VetVisit> visits =
+                visitRepository.all();
+
+        performCsvRoundTrip(
+                visits,
+                arguments.outputPath());
+
+        PriceUrgency summary =
+                calculateSummary(visits);
 
         int validCount = visits.size();
 
@@ -70,22 +80,56 @@ public final class VetClinicController {
                 summary.urgentCount(),
                 errors);
 
-        writeReport(arguments.outputPath(), report);
+        writeReport(
+                arguments.outputPath(),
+                report);
 
         return report;
     }
 
     /**
-     * Обчислює підсумок коректних візитів через Stream API.
+     * Експортує коректні візити у CSV та перевіряє round-trip.
      *
-     * <p>Загальна вартість обчислюється поліморфно через
-     * {@link VetVisit#finalCost()}, а кількість термінових
-     * візитів визначається через {@code filter}.
-     *
-     * @param visits список візитів спільного типу
-     * @return загальна вартість і кількість термінових візитів
+     * @param visits коректні предметні візити
+     * @param reportPath шлях до текстового звіту
+     * @throws IOException якщо CSV round-trip завершився помилкою
      */
-    static PriceUrgency calculateSummary(List<VetVisit> visits) {
+    private static void performCsvRoundTrip(
+            List<VetVisit> visits,
+            Path reportPath) throws IOException {
+
+        List<VetVisitRecord> original = visits.stream()
+                .map(VetVisitRecord::fromVisit)
+                .toList();
+
+        Path csvPath =
+                reportPath.resolveSibling(
+                        "vet-visits.csv");
+
+        try {
+            CsvExporter.write(
+                    csvPath,
+                    VetVisitRecord.class,
+                    original);
+
+            List<VetVisitRecord> restored =
+                    VetVisitCsvStorage.read(csvPath);
+
+            if (!original.equals(restored)) {
+                throw new DataStorageException(
+                        "Round-trip не відновив початкові записи");
+            }
+
+        } catch (DataStorageException exception) {
+            throw new IOException(
+                    "Помилка CSV round-trip",
+                    exception);
+        }
+    }
+
+    static PriceUrgency calculateSummary(
+            List<VetVisit> visits) {
+
         double totalPrice = visits.stream()
                 .mapToDouble(VetVisit::finalCost)
                 .sum();
@@ -100,21 +144,16 @@ public final class VetClinicController {
                 urgentCount);
     }
 
-    /**
-     * Записує сформований звіт у файл.
-     *
-     * @param outputPath шлях до вихідного файла
-     * @param report текст звіту
-     * @throws IOException якщо запис файла неможливий
-     */
     private static void writeReport(
             Path outputPath,
             String report) throws IOException {
 
-        Path outputDirectory = outputPath.getParent();
+        Path outputDirectory =
+                outputPath.getParent();
 
         if (outputDirectory != null) {
-            Files.createDirectories(outputDirectory);
+            Files.createDirectories(
+                    outputDirectory);
         }
 
         Files.writeString(
@@ -123,16 +162,6 @@ public final class VetClinicController {
                 StandardCharsets.UTF_8);
     }
 
-    /**
-     * Формує текстовий звіт.
-     *
-     * @param validCount кількість коректних записів
-     * @param averagePrice середня вартість
-     * @param totalRevenue загальний виторг
-     * @param urgentVisits кількість термінових візитів
-     * @param errors список помилок
-     * @return сформований текст звіту
-     */
     private static String buildReport(
             int validCount,
             double averagePrice,
@@ -140,7 +169,8 @@ public final class VetClinicController {
             int urgentVisits,
             List<String> errors) {
 
-        StringBuilder report = new StringBuilder();
+        StringBuilder report =
+                new StringBuilder();
 
         report.append(
                 "Звіт: Ветклініка%n".formatted());
