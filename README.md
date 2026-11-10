@@ -2009,3 +2009,727 @@ Release v4.0.0
 ```text
 v4.0.0
 ```
+# Лабораторна робота №5
+
+## Параметризоване сховище, винятки й CSV-експорт у Java-проєкті
+
+### Варіант
+
+**Варіант №21 — Ветклініка**
+
+Предметний запис:
+
+```text
+VetVisitRecord:
+animal, species, owner, date, diagnosis, cost
+```
+
+Типи полів:
+
+```text
+animal      String
+species     String
+owner       String
+date        LocalDate
+diagnosis   String
+cost        double
+```
+
+Ключ запису:
+
+```text
+owner + date
+```
+
+Версія LAB 05:
+
+```text
+5.0.0
+```
+
+Git tag:
+
+```text
+v5.0.0
+```
+
+---
+
+## Мета роботи
+
+Мета LAB 05 — замінити безпосереднє накопичення даних у списку на типобезпечне параметризоване сховище, реалізувати власний checked exception, runtime-анотацію для CSV-полів, універсальний рефлексивний CSV exporter, коректний CSV parser та повний round-trip:
+
+```text
+object → CSV → object
+```
+
+При цьому функціональність попередніх LAB 01–04 повинна залишитися працездатною.
+
+---
+
+## Основні зміни
+
+У LAB 05 реалізовано:
+
+- параметризоване сховище `Repository<T>`;
+- `Predicate<? super T>` для пошуку;
+- незмінний snapshot через `List.copyOf`;
+- checked exception `DataStorageException`;
+- збереження першопричини помилки через `cause`;
+- runtime-анотацію `@CsvColumn`;
+- generic reflective `CsvExporter`;
+- детермінований порядок CSV-полів;
+- UTF-8 читання та запис;
+- CSV escaping;
+- підтримку ком, подвійних лапок та multiline-полів;
+- документний `CsvParser`;
+- `VetVisitRecord`;
+- `VetVisitCsvStorage`;
+- CSV round-trip;
+- інтеграцію `Repository<VetVisit>` у `VetClinicController`;
+- нові unit та integration tests;
+- оновлення CI для версії `5.0.0`.
+
+---
+
+## Repository<T>
+
+Створено універсальне типобезпечне сховище:
+
+```java
+Repository<T>
+```
+
+Основні операції:
+
+```java
+void add(T item)
+
+List<T> all()
+
+List<T> find(Predicate<? super T> condition)
+```
+
+`add()` не дозволяє додавати `null`.
+
+Метод:
+
+```java
+all()
+```
+
+повертає незмінний snapshot через:
+
+```java
+List.copyOf(items)
+```
+
+Тому зовнішній код не отримує прямого доступу до внутрішньої mutable-колекції.
+
+Пошук виконується через:
+
+```java
+Predicate<? super T>
+```
+
+без використання raw types.
+
+У `VetClinicController` використовується:
+
+```java
+Repository<VetVisit> visitRepository = new Repository<>();
+```
+
+---
+
+## DataStorageException
+
+Для помилок роботи зі сховищем та CSV створено checked exception:
+
+```java
+DataStorageException
+```
+
+Підтримуються конструктори:
+
+```java
+DataStorageException(String message)
+
+DataStorageException(String message, Throwable cause)
+```
+
+Другий конструктор дозволяє не втрачати технічну першопричину помилки.
+
+Наприклад:
+
+```text
+DataStorageException
+└── cause: IOException
+```
+
+або:
+
+```text
+DataStorageException
+└── cause: NumberFormatException
+```
+
+---
+
+## @CsvColumn
+
+Для опису CSV-стовпців створено власну анотацію:
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
+public @interface CsvColumn {
+    String value();
+}
+```
+
+`RetentionPolicy.RUNTIME` дозволяє читати анотацію під час виконання програми через reflection.
+
+`ElementType.FIELD` обмежує її використання полями класу.
+
+Приклад:
+
+```java
+@CsvColumn("тварина")
+private final String animal;
+```
+
+---
+
+## VetVisitRecord
+
+Для CSV export/import створено окреме представлення:
+
+```java
+VetVisitRecord
+```
+
+Воно не замінює поліморфну модель `VetVisit`, а використовується як плоский запис для зберігання.
+
+Перетворення:
+
+```java
+VetVisitRecord.fromVisit(VetVisit visit)
+```
+
+Для перевірки round-trip реалізовано:
+
+```java
+equals()
+hashCode()
+```
+
+---
+
+## Рефлексивний CsvExporter
+
+Створено універсальний exporter:
+
+```java
+public static <T> void write(
+        Path path,
+        Class<T> type,
+        List<? extends T> records)
+```
+
+Exporter:
+
+1. отримує поля класу через reflection;
+2. вибирає поля з `@CsvColumn`;
+3. перевіряє доступ до полів;
+4. сортує їх за Java-іменем;
+5. формує CSV header;
+6. читає значення полів;
+7. виконує CSV escaping;
+8. записує файл у UTF-8.
+
+Exporter не містить предметних перевірок на зразок:
+
+```text
+if VetVisitRecord
+if RoutineVisit
+if UrgentVisit
+```
+
+Тому він може працювати з різними типами об'єктів, які використовують `@CsvColumn`.
+
+---
+
+## Детермінований порядок CSV
+
+Поля `VetVisitRecord` сортуються за Java-іменами:
+
+```text
+animal
+cost
+date
+diagnosis
+owner
+species
+```
+
+Тому фактичний CSV header:
+
+```text
+тварина,вартість,дата,діагноз,власник,вид
+```
+
+Порядок залишається стабільним між запусками.
+
+---
+
+## CSV escaping
+
+Exporter підтримує значення, що містять:
+
+- кому `,`;
+- подвійну лапку `"`;
+- `\n`;
+- `\r`.
+
+Значення зі спеціальними символами береться у подвійні лапки.
+
+Подвійні лапки всередині значення подвоюються.
+
+Наприклад значення:
+
+```text
+аналізи, "повторно"
+контроль
+```
+
+записується як коректне quoted multiline CSV-поле.
+
+---
+
+## CsvParser
+
+Для імпорту реалізовано:
+
+```java
+parse(String line)
+
+parseDocument(String text)
+```
+
+CSV-документ не розбирається через:
+
+```java
+split(",")
+```
+
+оскільки такий підхід не працює для:
+
+- ком усередині quoted-поля;
+- escaped quotes;
+- перенесень рядка всередині поля.
+
+`CsvParser` використовує посимвольний state-machine parsing.
+
+Підтримуються:
+
+- quoted fields;
+- escaped quotes;
+- multiline fields;
+- CR/LF;
+- перевірка незакритих лапок;
+- перевірка некоректного символу після закритої лапки.
+
+---
+
+## VetVisitCsvStorage
+
+Для предметного читання CSV створено:
+
+```java
+VetVisitCsvStorage
+```
+
+Він:
+
+- читає файл через `Files.readString`;
+- явно використовує `StandardCharsets.UTF_8`;
+- перевіряє CSV header;
+- використовує `CsvParser.parseDocument`;
+- відновлює `VetVisitRecord`;
+- повертає незмінний список;
+- загортає `IOException` у `DataStorageException` із збереженням `cause`.
+
+---
+
+## CSV round-trip
+
+У LAB 05 реалізований повний цикл:
+
+```text
+input.csv
+    ↓
+VetVisit.fromCsv(...)
+    ↓
+Repository<VetVisit>
+    ↓
+VetVisitRecord
+    ↓
+CsvExporter
+    ↓
+out/vet-visits.csv
+    ↓
+VetVisitCsvStorage
+    ↓
+CsvParser
+    ↓
+VetVisitRecord
+    ↓
+equals()
+```
+
+Після експорту CSV одразу читається назад.
+
+Відновлений список порівнюється з початковим.
+
+Якщо:
+
+```text
+original != restored
+```
+
+операція завершується помилкою.
+
+У коректному випадку:
+
+```text
+original == restored
+```
+
+Round-trip успішний.
+
+---
+
+## Фактичний CSV
+
+Після запуску застосунку створюється:
+
+```text
+out/vet-visits.csv
+```
+
+Для наявного вхідного набору отримано:
+
+```csv
+тварина,вартість,дата,діагноз,власник,вид
+Мурка,350.0,2026-10-01,огляд,Іван Петренко,кіт
+Бім,500.0,2026-10-02,вакцинація,Олена Коваль,собака
+Рекс,1200.0,2026-10-05,травма лапи,Андрій Мельник,собака
+```
+
+Файл записується та читається у:
+
+```text
+UTF-8
+```
+
+---
+
+## Набір із 5 записів
+
+Для integration-тестування LAB 05 використано п'ять записів варіанта №21.
+
+Серед них є запис із полем:
+
+```text
+аналізи, "повторно"
+контроль
+```
+
+яке одночасно містить:
+
+- кому;
+- лапки;
+- перенесення рядка.
+
+Це дозволяє перевірити не лише звичайний CSV, але й escaping та multiline parsing.
+
+---
+
+## Обробка помилок
+
+Перевірено такі ситуації:
+
+| Ситуація | Результат |
+|---|---|
+| `null` у `Repository` | помилка |
+| `null` predicate | помилка |
+| клас без `@CsvColumn` | `DataStorageException` |
+| неправильна кількість полів | `DataStorageException` |
+| неправильний `cost` | `DataStorageException` + `NumberFormatException` |
+| неправильна `date` | `DataStorageException` + `DateTimeParseException` |
+| незакриті CSV-лапки | `DataStorageException` |
+| неправильний CSV header | `DataStorageException` |
+| помилка файлової системи | `DataStorageException` + `IOException` |
+| невідповідність round-trip | помилка зберігання |
+
+---
+
+## Збереження функціональності LAB 04
+
+Після переходу на `Repository<T>` та додавання CSV round-trip попередня функціональність застосунку не змінилася.
+
+Контрольний результат `out/report.txt`:
+
+```text
+Звіт: Ветклініка
+Коректних записів: 3
+Середня вартість: 683.33
+Загальний виторг: 2050.00
+Ургентних візитів: 1
+Помилок: 2
+
+Помилки:
+Рядок 4: price має бути скінченним невід'ємним числом
+Рядок 5: поле price має бути числом
+```
+
+Отже попередня поведінка LAB 04 збережена.
+
+---
+
+## Тестування
+
+До початку LAB 05:
+
+```text
+Tests run: 62
+Failures: 0
+Errors: 0
+Skipped: 0
+```
+
+Після реалізації LAB 05:
+
+```text
+Tests run: 96
+Failures: 0
+Errors: 0
+Skipped: 0
+```
+
+Усі попередні тести LAB 01–04 продовжують проходити.
+
+Додатково перевірено:
+
+- `Repository<T>`;
+- immutable snapshot;
+- пошук через predicate;
+- `DataStorageException`;
+- збереження `cause`;
+- `@CsvColumn`;
+- reflection;
+- deterministic field order;
+- empty dataset;
+- CSV header;
+- comma escaping;
+- quote escaping;
+- multiline fields;
+- неправильну кількість полів;
+- неправильне число;
+- неправильну дату;
+- file-system error;
+- round-trip;
+- набір із п'яти предметних записів.
+
+---
+
+## SpotBugs
+
+Виконано:
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Результат:
+
+```text
+BugInstance size is 0
+Error size is 0
+No errors/warnings found
+BUILD SUCCESS
+```
+
+---
+
+## Javadoc
+
+Виконано:
+
+```powershell
+.\mvnw.cmd javadoc:javadoc
+```
+
+Результат:
+
+```text
+BUILD SUCCESS
+```
+
+Javadoc warnings:
+
+```text
+0
+```
+
+Публічні класи, конструктори, методи та анотація LAB 05 задокументовані.
+
+---
+
+## JAR
+
+Версія:
+
+```text
+5.0.0
+```
+
+Виконуваний JAR:
+
+```text
+target/lab01-5.0.0.jar
+```
+
+Локальна версія:
+
+```text
+5.0.0+build.local
+```
+
+Перевірка механізму CI build number:
+
+```text
+5.0.0+build.123
+```
+
+---
+
+## GitHub Issues
+
+Для LAB 05 використані Issues:
+
+- [#41 — LAB 05: Add generic Repository<T>](https://github.com/markiyansamson/kzp-labs-Samson/issues/41)
+- [#42 — LAB 05: Add DataStorageException](https://github.com/markiyansamson/kzp-labs-Samson/issues/42)
+- [#43 — LAB 05: Add @CsvColumn annotation](https://github.com/markiyansamson/kzp-labs-Samson/issues/43)
+- [#44 — LAB 05: Implement generic reflective CSV exporter](https://github.com/markiyansamson/kzp-labs-Samson/issues/44)
+- [#45 — LAB 05: Implement CSV parser and VetVisitRecord round-trip](https://github.com/markiyansamson/kzp-labs-Samson/issues/45)
+- [#46 — LAB 05: Add storage, CSV and round-trip tests](https://github.com/markiyansamson/kzp-labs-Samson/issues/46)
+- [#47 — LAB 05: Update infrastructure and documentation](https://github.com/markiyansamson/kzp-labs-Samson/issues/47)
+
+---
+
+## Pull Request
+
+Основний Pull Request LAB 05:
+
+[#48 — LAB 05: Add generic storage and CSV round-trip](https://github.com/markiyansamson/kzp-labs-Samson/pull/48)
+
+У PR успішно пройшли перевірки:
+
+```text
+Ubuntu  ✅
+Windows ✅
+macOS   ✅
+```
+
+Для подій `push` та `pull_request`.
+
+Перевірена CI-версія:
+
+```text
+5.0.0+build.52
+```
+
+---
+
+## CI після merge у main
+
+Після merge PR #48 виконано CI на `main`.
+
+CI run:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/42908558207
+
+Результат:
+
+```text
+verify (ubuntu-latest)  ✅
+verify (windows-latest) ✅
+verify (macos-latest)   ✅
+```
+
+JAR artifact:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/42908558207/artifacts/13805193850
+
+---
+
+## Git tag v5.0.0
+
+Фінальна версія LAB 05 позначена Git tag:
+
+```text
+v5.0.0
+```
+
+GitHub tag reference:
+
+https://github.com/markiyansamson/kzp-labs-Samson/tree/v5.0.0
+
+Для тегу також успішно виконано CI.
+
+Tag CI:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/42908964168
+
+Результат:
+
+```text
+verify (ubuntu-latest)  ✅
+verify (windows-latest) ✅
+verify (macos-latest)   ✅
+```
+
+Tag artifact:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/42908964168/artifacts/13807095212
+
+---
+
+## Підсумковий стан LAB 05
+
+```text
+Repository<T>              ✅
+DataStorageException       ✅
+@CsvColumn                 ✅
+Reflective CsvExporter     ✅
+CsvParser                  ✅
+VetVisitRecord             ✅
+VetVisitCsvStorage         ✅
+UTF-8                      ✅
+CSV escaping               ✅
+Multiline CSV              ✅
+Round-trip                 ✅
+Regression LAB 01–04       ✅
+JUnit 5 tests: 96          ✅
+Failures: 0                ✅
+Errors: 0                  ✅
+SpotBugs: 0                ✅
+Javadoc warnings: 0        ✅
+Ubuntu CI                  ✅
+Windows CI                 ✅
+macOS CI                   ✅
+Version 5.0.0              ✅
+Tag v5.0.0                 ✅
+```
