@@ -15,13 +15,21 @@ public final class Repository<T> {
     private final List<T> items = new ArrayList<>();
 
     /**
+     * Створює порожнє параметризоване сховище.
+     */
+    public Repository() {
+    }
+
+    /**
      * Додає непорожній запис до сховища.
      *
      * @param item запис
      * @throws NullPointerException якщо запис {@code null}
      */
     public void add(T item) {
-        items.add(Objects.requireNonNull(item, "Запис не може бути null"));
+        items.add(Objects.requireNonNull(
+                item,
+                "Запис не може бути null"));
     }
 
     /**
@@ -41,7 +49,9 @@ public final class Repository<T> {
      * @throws NullPointerException якщо умова {@code null}
      */
     public List<T> find(Predicate<? super T> condition) {
-        Objects.requireNonNull(condition, "Умова не може бути null");
+        Objects.requireNonNull(
+                condition,
+                "Умова не може бути null");
 
         return items.stream()
                 .filter(condition)

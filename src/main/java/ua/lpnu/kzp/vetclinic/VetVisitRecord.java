@@ -63,7 +63,7 @@ public final class VetVisitRecord {
     }
 
     /**
-     * Створює плоский CSV-запис із предметного VetVisit.
+     * Створює плоский CSV-запис із предметного візиту.
      *
      * @param visit предметний візит
      * @return CSV-запис
@@ -145,26 +145,56 @@ public final class VetVisitRecord {
         }
     }
 
+    /**
+     * Повертає назву тварини.
+     *
+     * @return назва тварини
+     */
     public String getAnimal() {
         return animal;
     }
 
+    /**
+     * Повертає вид тварини.
+     *
+     * @return вид тварини
+     */
     public String getSpecies() {
         return species;
     }
 
+    /**
+     * Повертає власника тварини.
+     *
+     * @return власник
+     */
     public String getOwner() {
         return owner;
     }
 
+    /**
+     * Повертає дату візиту.
+     *
+     * @return дата візиту
+     */
     public LocalDate getDate() {
         return date;
     }
 
+    /**
+     * Повертає діагноз.
+     *
+     * @return діагноз
+     */
     public String getDiagnosis() {
         return diagnosis;
     }
 
+    /**
+     * Повертає вартість візиту.
+     *
+     * @return вартість візиту
+     */
     public double getCost() {
         return cost;
     }
@@ -181,6 +211,12 @@ public final class VetVisitRecord {
         return value.trim();
     }
 
+    /**
+     * Порівнює записи за всіма полями.
+     *
+     * @param other інший об'єкт
+     * @return {@code true}, якщо записи однакові
+     */
     @Override
     public boolean equals(Object other) {
         if (this == other) {
@@ -199,6 +235,11 @@ public final class VetVisitRecord {
                 && diagnosis.equals(visit.diagnosis);
     }
 
+    /**
+     * Повертає хеш-код запису.
+     *
+     * @return хеш-код
+     */
     @Override
     public int hashCode() {
         return Objects.hash(
