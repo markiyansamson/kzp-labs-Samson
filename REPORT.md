@@ -7755,27 +7755,6 @@ Ubuntu  ✅
 Windows ✅
 macOS   ✅
 ```
-## Посилання на ресурси LAB 06
-
-GitHub-репозиторій:
-
-https://github.com/markiyansamson/kzp-labs-Samson
-
-GitHub Actions:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions
-
-Python LAB 06 CI:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45384042032
-
-CI:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45384042032
-
-Wheel artifact:
-
-https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45384042032/artifacts/14914369371
 
 Поточна версія:
 
@@ -7792,3 +7771,42 @@ v6.0.0
 Також після merge до REPORT будуть додані фінальні посилання на основний PR, CI `main`, tag CI та фінальний wheel artifact.
 
 Отримані навички є основою для наступного Python-етапу курсу, де обробку даних можна буде перенести на класи, `@property`, `@dataclass` та спеціальні методи.
+
+## Фінальні результати LAB 06
+
+Лабораторну роботу №6 завершено та інтегровано в гілку `main`.
+
+Pull Request LAB 06:  
+https://github.com/markiyansamson/kzp-labs-Samson/pull/56
+
+Після злиття Pull Request виконано GitHub Actions для гілки `main`.
+
+Python LAB 06 CI на `main`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45389767873
+
+Wheel artifact на `main`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45389767873/artifacts/14918925071
+
+Для лабораторної роботи встановлено версію пакета `6.0.0` та створено Git tag `v6.0.0`.
+
+Git tag `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/tree/v6.0.0
+
+Після створення тегу повторно виконано Python CI.
+
+Python LAB 06 CI для `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45390315249
+
+Wheel artifact для `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45390315249/artifacts/14917554492
+
+Підсумкові перевірки:
+
+- `pytest` — 28 tests passed;
+- `ruff check .` — успішно;
+- `ruff format --check .` — успішно;
+- wheel версії `6.0.0` — успішно зібрано та встановлено в окреме середовище;
+- CLI — перевірено для успішного та помилкового сценаріїв;
+- GitHub Actions — успішно виконано на Ubuntu, Windows та macOS;
+- wheel опубліковано як GitHub Actions artifact;
+- створено Git tag `v6.0.0`.
