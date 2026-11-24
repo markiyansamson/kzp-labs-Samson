@@ -3803,4 +3803,25 @@ wheel artifact                 ✅
 version 6.0.0                  ✅
 ```
 
-Основний Pull Request LAB 06, фінальний CI після merge, Git tag `v6.0.0` та фінальні artifact-посилання будуть додані після завершення merge і release-процесу.
+## Фінальні посилання LAB 06
+
+GitHub-репозиторій:  
+https://github.com/markiyansamson/kzp-labs-Samson
+
+Pull Request LAB 06:  
+https://github.com/markiyansamson/kzp-labs-Samson/pull/56
+
+Python LAB 06 CI на `main`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45389767873
+
+Wheel artifact на `main`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45389767873/artifacts/14918925071
+
+Git tag `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/tree/v6.0.0
+
+Python LAB 06 CI для `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45390315249
+
+Wheel artifact для `v6.0.0`:  
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45390315249/artifacts/14917554492
