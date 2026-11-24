@@ -2733,3 +2733,1074 @@ macOS CI                   ✅
 Version 5.0.0              ✅
 Tag v5.0.0                 ✅
 ```
+
+# Лабораторна робота №6
+
+## Обробка даних засобами Python
+
+### Варіант №21 — Ветклініка
+
+У LAB 06 реалізовано окремий Python-етап наскрізного проєкту.
+
+Предметна область:
+
+```text
+Ветклініка
+```
+
+CSV-поля:
+
+```text
+animal,species,owner,date,diagnosis,cost
+```
+
+Типи після завантаження:
+
+```text
+animal      str
+species     str
+owner       str
+date        datetime.date
+diagnosis   str
+cost        float
+```
+
+Умова відбору:
+
+```text
+cost > threshold
+```
+
+Для роботи використано:
+
+```text
+threshold = 500.0
+```
+
+Агрегування:
+
+```text
+кількість візитів за species
+```
+
+Множина:
+
+```text
+унікальні owner
+```
+
+Основні показники звіту:
+
+```text
+середня вартість
+найдорожчий візит
+```
+
+Версія LAB 06:
+
+```text
+6.0.0
+```
+
+Локальна версія Python:
+
+```text
+Python 3.12.6
+```
+
+---
+
+## Мета роботи
+
+Мета LAB 06 — створити Python-застосунок, який:
+
+- читає CSV;
+- перетворює текстові поля у типізовані значення;
+- використовує списки, словники, множини та comprehensions;
+- виконує аналіз даних;
+- формує детермінований текстовий звіт;
+- явно обробляє помилки;
+- має CLI;
+- перевіряється через `pytest`;
+- перевіряється через `ruff`;
+- збирається у wheel;
+- перевіряється у GitHub Actions на Ubuntu, Windows та macOS.
+
+---
+
+## Структура Python-проєкту
+
+Python-код LAB 06 розміщено в окремій папці:
+
+```text
+lab06/
+├── .gitignore
+├── pyproject.toml
+├── data/
+│   └── input.csv
+├── reports/
+│   └── summary.txt
+├── src/
+│   └── kzp_lab06/
+│       ├── __init__.py
+│       ├── analysis.py
+│       ├── cli.py
+│       ├── errors.py
+│       ├── loader.py
+│       └── reporting.py
+└── tests/
+    ├── test_analysis.py
+    ├── test_cli.py
+    ├── test_loader.py
+    └── test_reporting.py
+```
+
+Розподіл відповідальності:
+
+```text
+loader.py      → читання, перевірка та типізація CSV
+analysis.py    → аналіз предметних записів
+reporting.py   → форматування та запис звіту
+errors.py      → DataError
+cli.py         → аргументи командного рядка та межа обробки помилок
+```
+
+CLI-код не виконується під час звичайного імпорту модулів.
+
+---
+
+## Віртуальне середовище
+
+Для LAB 06 використовується окреме Python virtual environment:
+
+```text
+lab06/.venv
+```
+
+Створення:
+
+```powershell
+python -m venv .venv
+```
+
+Проєкт із dev-залежностями встановлюється командою:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+```
+
+Використані інструменти:
+
+```text
+Python 3.12.6
+pytest 9.2.0
+ruff 0.17.6
+build 1.6.1
+```
+
+До Git не додаються:
+
+```text
+.venv/
+.venv-wheel/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.egg-info/
+```
+
+---
+
+## pyproject.toml
+
+Python-пакет описано через:
+
+```text
+lab06/pyproject.toml
+```
+
+Назва пакета:
+
+```text
+kzp-lab06-vetclinic
+```
+
+Версія:
+
+```text
+6.0.0
+```
+
+Мінімальна версія Python:
+
+```text
+>=3.11
+```
+
+Dev-залежності:
+
+```text
+pytest
+ruff
+build
+```
+
+CLI script:
+
+```text
+kzp-lab06
+```
+
+---
+
+## CSV
+
+Вхідний файл:
+
+```text
+lab06/data/input.csv
+```
+
+CSV читається стандартним модулем Python:
+
+```python
+csv.DictReader
+```
+
+Файл відкривається з явними параметрами:
+
+```python
+encoding="utf-8"
+newline=""
+```
+
+Ручне розділення через:
+
+```python
+split(",")
+```
+
+не використовується.
+
+### Заголовок CSV
+
+```csv
+animal,species,owner,date,diagnosis,cost
+```
+
+### Фактичний набір даних
+
+```csv
+animal,species,owner,date,diagnosis,cost
+Мурка,кіт,Іван Петренко,2026-10-01,огляд,350.0
+Бім,собака,Олена Коваль,2026-10-02,вакцинація,500.0
+Рекс,собака,Андрій Мельник,2026-10-05,травма лапи,1200.0
+Луна,кіт,Ірина Савчук,2026-10-04,"аналізи, повторний контроль",700.0
+Барсик,кіт,Іван Петренко,2026-10-06,контроль,450.0
+Граф,кінь,Марія Бойко,2026-10-07,огляд,900.0
+```
+
+Набір містить:
+
+- 6 предметних записів;
+- дубльованого власника `Іван Петренко`;
+- граничний запис `cost = 500.0`;
+- quoted-текст із комою;
+- кілька видів тварин;
+- значення вище та нижче threshold.
+
+---
+
+## Завантаження та перетворення даних
+
+За завантаження відповідає:
+
+```text
+loader.py
+```
+
+Після читання CSV поля перетворюються:
+
+```text
+date → datetime.date
+cost → float
+```
+
+Текстові поля очищаються через:
+
+```python
+strip()
+```
+
+Перевіряються:
+
+- заголовок CSV;
+- обов'язкові поля;
+- неправильна кількість полів;
+- формат дати;
+- числовий формат `cost`;
+- від'ємний `cost`;
+- фізично порожній CSV;
+- синтаксично пошкоджений CSV.
+
+---
+
+## DataError
+
+Для помилок вхідних даних створено:
+
+```python
+class DataError(ValueError):
+    """Помилка формату або значення вхідних даних."""
+```
+
+Для помилок перетворення зберігається першопричина:
+
+```python
+raise DataError(...) from error
+```
+
+Наприклад для неправильного `cost` повідомлення містить:
+
+```text
+Рядок 2
+cost
+```
+
+а `cause` містить початковий:
+
+```text
+ValueError
+```
+
+Для неправильного формату дати також зберігається початковий `ValueError`.
+
+Голий:
+
+```python
+except:
+```
+
+не використовується.
+
+---
+
+## Порожній CSV
+
+Визначено два окремі випадки.
+
+Фізично порожній файл:
+
+```text
+0 bytes
+```
+
+відхиляється через:
+
+```text
+DataError: Порожній CSV: відсутній заголовок
+```
+
+CSV, який містить коректний заголовок, але не має записів:
+
+```csv
+animal,species,owner,date,diagnosis,cost
+```
+
+є коректним та повертає:
+
+```python
+[]
+```
+
+---
+
+## Аналіз даних
+
+Основний модуль:
+
+```text
+analysis.py
+```
+
+### Відбір
+
+Для варіанта №21 реалізовано:
+
+```text
+cost > threshold
+```
+
+Threshold:
+
+```text
+500.0
+```
+
+Фактичний результат:
+
+```text
+Рекс  → 1200.0
+Луна  → 700.0
+Граф  → 900.0
+```
+
+Відібрано:
+
+```text
+3 записи
+```
+
+Запис:
+
+```text
+Бім → cost = 500.0
+```
+
+не потрапляє до результату, оскільки умова використовує строгий оператор:
+
+```text
+>
+```
+
+а не:
+
+```text
+>=
+```
+
+---
+
+## Список
+
+Відібрані записи формуються через list comprehension:
+
+```python
+[
+    record
+    for record in records
+    if float(record["cost"]) > threshold
+]
+```
+
+---
+
+## Словник
+
+Побудовано словник кількості візитів за видом тварини.
+
+Фактичний результат:
+
+```text
+кінь: 1
+кіт: 3
+собака: 2
+```
+
+Ключі формуються у стабільному порядку.
+
+---
+
+## Множина
+
+Побудовано множину унікальних власників.
+
+Фактичні унікальні власники:
+
+```text
+Іван Петренко
+Ірина Савчук
+Андрій Мельник
+Марія Бойко
+Олена Коваль
+```
+
+У вихідних даних:
+
+```text
+Іван Петренко
+```
+
+зустрічається двічі, але у множині зберігається один раз.
+
+---
+
+## Comprehensions
+
+У LAB 06 використано:
+
+```text
+list comprehension
+set comprehension
+dict comprehension
+```
+
+Вони використовуються для:
+
+- відбору записів;
+- формування множини видів;
+- формування множини власників;
+- побудови агрегованого словника.
+
+---
+
+## Середня вартість
+
+Для 6 записів:
+
+```text
+350 + 500 + 1200 + 700 + 450 + 900 = 4100
+```
+
+Середня вартість:
+
+```text
+4100 / 6 = 683.333...
+```
+
+У звіті:
+
+```text
+683.33
+```
+
+Для порожнього набору функція повертає:
+
+```text
+0.0
+```
+
+---
+
+## Найдорожчий візит
+
+Найдорожчий запис:
+
+```text
+animal: Рекс
+species: собака
+cost: 1200.0
+```
+
+У звіті:
+
+```text
+Рекс — 1200.00
+```
+
+Для порожнього набору повертається:
+
+```python
+None
+```
+
+---
+
+## Функція з default parameter, *args і **kwargs
+
+Реалізовано функцію:
+
+```python
+make_summary(
+    records,
+    *metrics,
+    threshold=500.0,
+    **labels,
+)
+```
+
+У ній:
+
+```text
+threshold
+```
+
+має типове значення:
+
+```text
+500.0
+```
+
+`*args` використовується через:
+
+```text
+*metrics
+```
+
+`**kwargs` використовується через:
+
+```text
+**labels
+```
+
+Приклад:
+
+```python
+make_summary(
+    records,
+    "average_cost",
+    "most_expensive",
+    threshold=500.0,
+    average_cost="Середня вартість",
+    most_expensive="Найдорожчий візит",
+)
+```
+
+Невідома метрика відхиляється через:
+
+```text
+ValueError
+```
+
+---
+
+## Детермінований звіт
+
+Формування звіту виконує:
+
+```text
+reporting.py
+```
+
+Категорії та власники перед записом сортуються.
+
+Тому результат не залежить від випадкового порядку множини.
+
+Формат чисел:
+
+```text
+2 знаки після десяткової крапки
+```
+
+---
+
+## Запис звіту
+
+Звіт записується через:
+
+```python
+with path.open(
+    "w",
+    encoding="utf-8",
+    newline="\n",
+) as target:
+    target.write(text)
+```
+
+`with` гарантує закриття файлу після завершення операції.
+
+Шлях будується через:
+
+```python
+pathlib.Path
+```
+
+Вихідний файл:
+
+```text
+lab06/reports/summary.txt
+```
+
+---
+
+## Фактичний звіт
+
+```text
+Звіт: Ветклініка
+Усього записів: 6
+Поріг вартості: 500.00
+Записів дорожче порогу: 3
+
+Кількість візитів за видом:
+кінь: 1
+кіт: 3
+собака: 2
+
+Власники:
+Іван Петренко
+Ірина Савчук
+Андрій Мельник
+Марія Бойко
+Олена Коваль
+
+Середня вартість: 683.33
+Найдорожчий візит: Рекс — 1200.00
+```
+
+---
+
+## CLI
+
+CLI реалізовано у:
+
+```text
+cli.py
+```
+
+Запуск Python module:
+
+```powershell
+.\.venv\Scripts\python.exe -m kzp_lab06.cli data\input.csv reports\summary.txt
+```
+
+Після встановлення пакета доступний script:
+
+```powershell
+kzp-lab06 data\input.csv reports\summary.txt
+```
+
+CLI приймає:
+
+```text
+input_csv
+output_report
+```
+
+Коди завершення:
+
+```text
+0 — успішне виконання
+2 — очікувана помилка даних
+3 — файлова помилка
+```
+
+Повідомлення про помилки виводяться у:
+
+```text
+stderr
+```
+
+Для Windows stderr налаштовується на UTF-8, якщо потік підтримує `reconfigure()`.
+
+---
+
+## pytest
+
+Локальна команда:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Фінальний локальний результат:
+
+```text
+28 passed
+```
+
+Перевірені позитивні, крайові та негативні сценарії.
+
+### Loader
+
+Перевірено:
+
+- коректний запис;
+- перетворення дати;
+- перетворення cost;
+- header-only CSV;
+- фізично порожній CSV;
+- quoted поле з комою;
+- неправильний cost;
+- неправильну дату;
+- від'ємний cost;
+- missing value;
+- missing column;
+- malformed quoted CSV;
+- збереження cause.
+
+### Analysis
+
+Перевірено:
+
+- `cost > 500.0`;
+- boundary `cost == 500.0`;
+- порожній результат відбору;
+- кількість за species;
+- детермінований словник;
+- унікальних owners;
+- дублікати;
+- середню cost;
+- порожній input;
+- найдорожчий visit;
+- default threshold;
+- власний threshold;
+- `*args`;
+- `**kwargs`;
+- unknown metric.
+
+### Reporting
+
+Перевірено:
+
+- повний детермінований текст;
+- порожній набір;
+- запис UTF-8;
+- створення parent directory.
+
+### CLI
+
+Перевірено:
+
+- успішний сценарій;
+- exit code `0`;
+- пошкоджений CSV;
+- ненульовий exit code;
+- stderr;
+- відсутній input file.
+
+---
+
+## Ruff
+
+Lint:
+
+```powershell
+.\.venv\Scripts\ruff.exe check .
+```
+
+Результат:
+
+```text
+All checks passed!
+```
+
+Перевірка форматування:
+
+```powershell
+.\.venv\Scripts\ruff.exe format --check .
+```
+
+Результат:
+
+```text
+10 files already formatted
+```
+
+Налаштування Ruff знаходяться у:
+
+```text
+pyproject.toml
+```
+
+---
+
+## Wheel packaging
+
+Пакет збирається:
+
+```powershell
+.\.venv\Scripts\python.exe -m build
+```
+
+Результат:
+
+```text
+Successfully built
+kzp_lab06_vetclinic-6.0.0.tar.gz
+kzp_lab06_vetclinic-6.0.0-py3-none-any.whl
+```
+
+Wheel:
+
+```text
+dist/kzp_lab06_vetclinic-6.0.0-py3-none-any.whl
+```
+
+---
+
+## Перевірка wheel у чистому середовищі
+
+Створено окреме середовище:
+
+```text
+.venv-wheel
+```
+
+Створення:
+
+```powershell
+python -m venv .venv-wheel
+```
+
+Встановлення конкретного wheel без dev-залежностей:
+
+```powershell
+.\.venv-wheel\Scripts\python.exe -m pip install --no-deps dist\kzp_lab06_vetclinic-6.0.0-py3-none-any.whl
+```
+
+Запуск як module:
+
+```powershell
+.\.venv-wheel\Scripts\python.exe -m kzp_lab06.cli data\input.csv reports\wheel-summary.txt
+```
+
+Також перевірено встановлений CLI script:
+
+```powershell
+.\.venv-wheel\Scripts\kzp-lab06.exe data\input.csv reports\wheel-cli-summary.txt
+```
+
+В обох випадках отримано той самий правильний звіт.
+
+---
+
+## GitHub Issues
+
+Для LAB 06 створено:
+
+### Issue #50
+
+```text
+LAB 06: Implement CSV loader and DataError
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/50
+
+### Issue #51
+
+```text
+LAB 06: Implement veterinary clinic data analysis
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/51
+
+### Issue #52
+
+```text
+LAB 06: Implement report generation and CLI
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/52
+
+### Issue #53
+
+```text
+LAB 06: Add pytest coverage
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/53
+
+### Issue #54
+
+```text
+LAB 06: Configure Ruff and wheel packaging
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/54
+
+### Issue #55
+
+```text
+LAB 06: Add Python CI and documentation
+```
+
+https://github.com/markiyansamson/kzp-labs-Samson/issues/55
+
+---
+
+## GitHub Actions
+
+Для LAB 06 створено окремий workflow:
+
+```text
+.github/workflows/python-ci.yml
+```
+
+CI запускається на:
+
+```text
+Ubuntu
+Windows
+macOS
+```
+
+Для кожної ОС виконуються:
+
+```text
+Install project with dev dependencies
+Run pytest
+Run Ruff lint
+Check Ruff formatting
+Run CLI
+Build wheel
+Upload wheel
+```
+
+Результат:
+
+```text
+Python checks (ubuntu-latest)  ✅
+Python checks (windows-latest) ✅
+Python checks (macos-latest)   ✅
+```
+
+---
+
+## Python LAB 06 CI
+
+CI run:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45384042032
+
+Wheel artifact:
+
+https://github.com/markiyansamson/kzp-labs-Samson/actions/runs/45384042032/artifacts/14914369371
+
+CI підтвердив роботу LAB 06 на:
+
+```text
+Ubuntu  ✅
+Windows ✅
+macOS   ✅
+```
+
+---
+
+## Поточний стан LAB 06
+
+```text
+Python 3.12.6                  ✅
+Variant 21                     ✅
+CSV records: 6                 ✅
+csv.DictReader                 ✅
+UTF-8                          ✅
+newline=""                     ✅
+Typed values                   ✅
+DataError                      ✅
+raise ... from                 ✅
+Row numbers in errors          ✅
+list                           ✅
+dict                           ✅
+set                            ✅
+comprehensions                 ✅
+cost > threshold               ✅
+threshold = 500.0              ✅
+species aggregation            ✅
+unique owners                  ✅
+average cost                   ✅
+most expensive visit           ✅
+default parameter              ✅
+*args                          ✅
+**kwargs                       ✅
+deterministic report           ✅
+with + Path.open               ✅
+CLI                            ✅
+success exit code              ✅
+error exit code                ✅
+pytest: 28 passed              ✅
+ruff check                     ✅
+ruff format --check            ✅
+wheel build                    ✅
+wheel clean install            ✅
+installed CLI script           ✅
+Ubuntu CI                      ✅
+Windows CI                     ✅
+macOS CI                       ✅
+wheel artifact                 ✅
+version 6.0.0                  ✅
+```
+
+Основний Pull Request LAB 06, фінальний CI після merge, Git tag `v6.0.0` та фінальні artifact-посилання будуть додані після завершення merge і release-процесу.
