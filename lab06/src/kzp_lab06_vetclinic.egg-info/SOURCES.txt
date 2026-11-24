@@ -1,0 +1,8 @@
+pyproject.toml
+src/kzp_lab06/__init__.py
+src/kzp_lab06_vetclinic.egg-info/PKG-INFO
+src/kzp_lab06_vetclinic.egg-info/SOURCES.txt
+src/kzp_lab06_vetclinic.egg-info/dependency_links.txt
+src/kzp_lab06_vetclinic.egg-info/entry_points.txt
+src/kzp_lab06_vetclinic.egg-info/requires.txt
+src/kzp_lab06_vetclinic.egg-info/top_level.txt
