@@ -1,2 +1,2 @@
-﻿class DataError(ValueError):
+class DataError(ValueError):
     """Помилка формату або значення вхідних даних."""

@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -77,8 +77,7 @@ def test_missing_value_is_rejected(tmp_path: Path) -> None:
     """Перевіряє відсутнє обов'язкове значення."""
     path = write_csv(
         tmp_path,
-        "animal,species,owner,date,diagnosis,cost\n"
-        "Мурка,кіт,,2026-10-01,огляд,350.0\n",
+        "animal,species,owner,date,diagnosis,cost\nМурка,кіт,,2026-10-01,огляд,350.0\n",
     )
 
     with pytest.raises(DataError, match="owner"):

@@ -1,4 +1,4 @@
-﻿import csv
+import csv
 from datetime import date
 from pathlib import Path
 
@@ -26,8 +26,7 @@ def load_records(path: Path) -> list[dict[str, object]]:
 
             if reader.fieldnames != REQUIRED_FIELDS:
                 raise DataError(
-                    "Некоректний заголовок CSV. "
-                    f"Очікується: {','.join(REQUIRED_FIELDS)}"
+                    f"Некоректний заголовок CSV. Очікується: {','.join(REQUIRED_FIELDS)}"
                 )
 
             records: list[dict[str, object]] = []
@@ -35,9 +34,7 @@ def load_records(path: Path) -> list[dict[str, object]]:
             for row_number, row in enumerate(reader, start=2):
                 try:
                     if None in row:
-                        raise DataError(
-                            f"Рядок {row_number}: неправильна кількість полів"
-                        )
+                        raise DataError(f"Рядок {row_number}: неправильна кількість полів")
 
                     animal = _required_text(row, "animal", row_number)
                     species = _required_text(row, "species", row_number)
@@ -51,16 +48,12 @@ def load_records(path: Path) -> list[dict[str, object]]:
                     cost = float(raw_cost)
 
                     if cost < 0:
-                        raise DataError(
-                            f"Рядок {row_number}: cost не може бути від'ємним"
-                        )
+                        raise DataError(f"Рядок {row_number}: cost не може бути від'ємним")
 
                 except DataError:
                     raise
                 except (KeyError, TypeError, ValueError) as error:
-                    raise DataError(
-                        f"Рядок {row_number}: некоректне значення поля"
-                    ) from error
+                    raise DataError(f"Рядок {row_number}: некоректне значення поля") from error
 
                 records.append(
                     {
@@ -90,8 +83,6 @@ def _required_text(
     value = row.get(field)
 
     if not isinstance(value, str) or not value.strip():
-        raise DataError(
-            f"Рядок {row_number}: поле {field} не може бути порожнім"
-        )
+        raise DataError(f"Рядок {row_number}: поле {field} не може бути порожнім")
 
     return value.strip()
