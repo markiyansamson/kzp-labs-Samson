@@ -1,3 +1,4 @@
+import csv
 from datetime import date
 from pathlib import Path
 
@@ -60,7 +61,7 @@ def test_comma_inside_quoted_field(tmp_path: Path) -> None:
 
 
 def test_invalid_cost_preserves_cause(tmp_path: Path) -> None:
-    """Перевіряє DataError та першопричину для некоректної вартості."""
+    """Перевіряє номер рядка, поле cost та першопричину."""
     path = write_csv(
         tmp_path,
         "animal,species,owner,date,diagnosis,cost\n"
@@ -70,7 +71,36 @@ def test_invalid_cost_preserves_cause(tmp_path: Path) -> None:
     with pytest.raises(DataError) as exc_info:
         load_records(path)
 
+    assert "Рядок 2" in str(exc_info.value)
+    assert "cost" in str(exc_info.value)
     assert isinstance(exc_info.value.__cause__, ValueError)
+
+
+def test_invalid_date_preserves_cause(tmp_path: Path) -> None:
+    """Перевіряє номер рядка, поле date та першопричину."""
+    path = write_csv(
+        tmp_path,
+        "animal,species,owner,date,diagnosis,cost\n"
+        "Мурка,кіт,Іван Петренко,wrong-date,огляд,350.0\n",
+    )
+
+    with pytest.raises(DataError) as exc_info:
+        load_records(path)
+
+    assert "Рядок 2" in str(exc_info.value)
+    assert "date" in str(exc_info.value)
+    assert isinstance(exc_info.value.__cause__, ValueError)
+
+
+def test_negative_cost_is_rejected(tmp_path: Path) -> None:
+    """Перевіряє заборону від'ємної вартості."""
+    path = write_csv(
+        tmp_path,
+        "animal,species,owner,date,diagnosis,cost\nМурка,кіт,Іван Петренко,2026-10-01,огляд,-1.0\n",
+    )
+
+    with pytest.raises(DataError, match="cost не може бути від'ємним"):
+        load_records(path)
 
 
 def test_missing_value_is_rejected(tmp_path: Path) -> None:
@@ -101,3 +131,17 @@ def test_completely_empty_csv_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(DataError, match="Порожній CSV"):
         load_records(path)
+
+
+def test_malformed_csv_is_rejected(tmp_path: Path) -> None:
+    """Перевіряє синтаксично пошкоджений quoted CSV."""
+    path = write_csv(
+        tmp_path,
+        "animal,species,owner,date,diagnosis,cost\n"
+        'Луна,кіт,Ірина Савчук,2026-10-04,"незакрите поле,700.0\n',
+    )
+
+    with pytest.raises(DataError, match="Некоректний CSV") as exc_info:
+        load_records(path)
+
+    assert isinstance(exc_info.value.__cause__, csv.Error)
